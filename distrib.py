@@ -166,7 +166,9 @@ def svd_matrix(W,D):
 #    Result = ((W*A)*(W.transpose().tocsr()))
 #    return Result
 
-
+def simple(W):
+    Result = (W * W.transpose())
+    return Result
 
 def rank(Input, D, R):
     content = [word.strip() for word in open(Input)]
@@ -175,8 +177,15 @@ def rank(Input, D, R):
     ResultMatrix = R.todense()
     TruthMatrix = D.todense()
     for i in content:
-        d = e = {}
-        l = r = rc = tr = trr = iter = iterr = 0 
+        l = 0
+        d = {}
+        e = {}
+        r = 0
+        rc = 0
+        tr = 0
+        trr = 0
+        iter = 0
+        iterr = 0 
         print i
 
         print "\t Truth \t\t Calculation" 
@@ -237,7 +246,8 @@ if __name__ == '__main__':
     S = (sob[0], sob[1])
     f.close()
     A = ss.csr_matrix((data,indices,indptr), shape=S)
-    semi_matrix(W,A)
+    R1 = semi_matrix(W,A)
+    R2 = simple(W)
     
 #    f = h5py.File('projection.hdf5', 'w')
 #    dset = f.create_dataset('D', data=A.data)
@@ -246,7 +256,8 @@ if __name__ == '__main__':
 #    dset = f.create_dataset('S', data=S)
 #    f.close()
     Input = sys.argv[2]
-#    rank(Input, D, R)
-    rank(Input, D, A)
+    rank(Input, D, R1)
+
+    rank(Input, D, R2)
 
    
