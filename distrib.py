@@ -246,8 +246,8 @@ if __name__ == '__main__':
     S = (sob[0], sob[1])
     f.close()
     A = ss.csr_matrix((data,indices,indptr), shape=S)
-    R1 = semi_matrix(W,A)
-    R2 = simple(W)
+#    R = semi_matrix(W,A)
+    R = simple(W)
     
 #    f = h5py.File('projection.hdf5', 'w')
 #    dset = f.create_dataset('D', data=A.data)
@@ -256,8 +256,4 @@ if __name__ == '__main__':
 #    dset = f.create_dataset('S', data=S)
 #    f.close()
     Input = sys.argv[2]
-    rank(Input, D, R1)
-
-    rank(Input, D, R2)
-
-   
+    rank(Input, D, R)
