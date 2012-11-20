@@ -197,7 +197,10 @@ def rank(Input, D, R):
         C = OrderedDict(reversed(sorted(d.items(), key=lambda t: np.float(t[1])))).keys()
 
         T = OrderedDict(reversed(sorted(e.items(), key=lambda t: np.float(t[1])))).keys()
-
+        
+        Cv = OrderedDict(reversed(sorted(d.items(), key=lambda t: np.float(t[1])))).values()
+        Tv = OrderedDict(reversed(sorted(e.items(), key=lambda t: np.float(t[1])))).values()
+        
         for m in range(0,15):
             print '\t', T[m], '\t\t' ,C[m]
 
@@ -218,42 +221,65 @@ def rank(Input, D, R):
     print "Average Rank", Av_rank
     print "Truth Average Rank", TAv_rank
 
+def l1_error(W,D):
+
+    n = A.size[1]
+    
+    c0 = ones_v(2*n)
+    
+    G1 = concathoriz(A,-A)
+    G2 = concathoriz(-A,A)
+    G3 = -eye(2*n)
+    G = reduce(concatvert, [G1,G2,G3])
+    hh = reduce(concatvert, [y, -y, zeros_v(2*n)])
+    
+    u = cvxopt.solvers.lp(c0, G, hh, solver=solver)
+    
+    v = u['x'][:n]
+    
+    return v
 if __name__ == '__main__':
+
     W = prefsuff()
+
 #    D = truth()
 #    D = lch_truth()
 #    D = wup_truth()
 #    D = jcn_truth()
     D = lin_truth()
+
 #    R, A, S= matrix(W,D)
 #    svd_matrix(W,D)
 
+#    f = h5py.File('projection.hdf5', 'r')
+#    dataset = f['D']
+#    data = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(data)
+#    dataset = f['Ind']
+#    indices = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(indices)
+#    dataset = f['IP']
+#    indptr = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(indptr)
+#    dataset = f['S']
+#    sob = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(sob)
+#    S = (sob[0], sob[1])
+#    f.close()
 
+#    A = ss.csr_matrix((data,indices,indptr), shape=S)
 
-    f = h5py.File('projection.hdf5', 'r')
-    dataset = f['D']
-    data = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(data)
-    dataset = f['Ind']
-    indices = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(indices)
-    dataset = f['IP']
-    indptr = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(indptr)
-    dataset = f['S']
-    sob = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(sob)
-    S = (sob[0], sob[1])
-    f.close()
-    A = ss.csr_matrix((data,indices,indptr), shape=S)
 #    R = semi_matrix(W,A)
     R = simple(W)
-    
+
+
 #    f = h5py.File('projection.hdf5', 'w')
 #    dset = f.create_dataset('D', data=A.data)
 #    dset = f.create_dataset('Ind', data=A.indices)
 #    dset = f.create_dataset('IP', data=A.indptr)
 #    dset = f.create_dataset('S', data=S)
 #    f.close()
+
     Input = sys.argv[2]
     rank(Input, D, R)
+
