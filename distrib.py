@@ -1,3 +1,8 @@
+from cvxmod import problem, minimize, optvar, ones, speye, diag
+from cvxmod.atoms import norm1
+import cvxopt
+import cvxopt.solvers
+
 import sys, fileinput, re
 from nltk import trigrams
 from nltk.corpus import stopwords, wordnet, wordnet_ic
@@ -221,17 +226,33 @@ def rank(Input, D, R):
     print "Average Rank", Av_rank
     print "Truth Average Rank", TAv_rank
 
+matrix = cvxopt.base.matrix
+
+def eye(N):
+    """ Return I""" 
+    return matrix([ [0]*i + [1] + [0]*(N-i-1) for i in range(N)], (N,N), 'd')
+
+def ones_v(n):
+    """Return column vectores of length n"""
+    return matrix(1, (n,1), 'd')
+
+def zeros_v(n):
+    """Return zero vectors """
+    return matrix (0,(n,1),'d')
+
+
+
 def l1_error(W,D):
 
-    n = A.size[1]
+    n = W.size[1]
     
     c0 = ones_v(2*n)
     
-    G1 = concathoriz(A,-A)
-    G2 = concathoriz(-A,A)
+    G1 = concathoriz(W,-W)
+    G2 = concathoriz(-W,W)
     G3 = -eye(2*n)
     G = reduce(concatvert, [G1,G2,G3])
-    hh = reduce(concatvert, [y, -y, zeros_v(2*n)])
+    hh = reduce(concatvert, [D, -D, zeros_v(2*n)])
     
     u = cvxopt.solvers.lp(c0, G, hh, solver=solver)
     
