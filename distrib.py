@@ -2,7 +2,6 @@ from cvxmod import problem, minimize, optvar, ones, speye, diag
 from cvxmod.atoms import norm1
 import cvxopt
 import cvxopt.solvers
-
 import sys, fileinput, re
 from nltk import trigrams
 from nltk.corpus import stopwords, wordnet, wordnet_ic
@@ -219,7 +218,7 @@ def rank(Input, D, R):
             r += C.index(n)+1
             iterr += 1
             trr += iterr
-        rank.append(r/float(len(content)))
+        rank.append(rc/float(len(content)))
         tr_rank.append(trr/float(len(content)))
     Av_rank = sum(rank)/float(len(content))
     TAv_rank = sum(tr_rank)/float(len(content))
@@ -240,25 +239,60 @@ def zeros_v(n):
     """Return zero vectors """
     return matrix (0,(n,1),'d')
 
+def concathoriz(m1, m2):
+    """ Concatenate two matrices horizontally """
+    r1, c1 = m1.size
+    r2, c2 = m2.size
+    if  r1 != r2:
+        raise TypeError('Heights don''t match, %d and %d' % (r1,r2))
+    return matrix(list(m1)+list(m2), (r1,c1+c2), 'd')
+    r1, c1 = m1.size
+    r2, c2 = m2.size
+    if  c1 != c2:
+        raise TypeError('Widths don''t match, %d and %d' % (c1, c2))
+    
+    return concathoriz(m1.trans(), m2.trans()).trans()
+    
+ 
 
 
 def l1_error(W,D):
+    """this uses cvxopt"""
 
     n = W.size[1]
-    
     c0 = ones_v(2*n)
-    
     G1 = concathoriz(W,-W)
     G2 = concathoriz(-W,W)
     G3 = -eye(2*n)
     G = reduce(concatvert, [G1,G2,G3])
     hh = reduce(concatvert, [D, -D, zeros_v(2*n)])
-    
     u = cvxopt.solvers.lp(c0, G, hh, solver=solver)
-    
     v = u['x'][:n]
-    
     return v
+
+def solve_plain_l1_cvxmod(W, D):
+    
+    x = optvar('x', W.size[1])
+    p = problem(minimize(norm1(x)), [W*x == y])
+    p.solve(quiet=True, solver='glpk')
+    return x.value
+
+def solve_rw_l1_cvxmod(A, y, iters=6):
+    W = speye(A.size[1])
+    x = optvar('x', A.size[1])
+    epsilon = 0.5
+    for i in range(iters):
+        last_x = matrix(x.value) if x.value else None
+        p = problem(minimize(norm1(W*x)), [A*x == y])
+        p.solve(quiet=True, cvxoptsolver='glpk')
+        ww = abs(x.value) + epsilon
+        W = diag(matrix([1/w for w in ww]))
+        if last_x:
+            err = ( (last_x - x.value).T * (last_x - x.value) )[0]
+            if err < 1e-4:
+                break
+    return x.value
+
 if __name__ == '__main__':
 
     W = prefsuff()
@@ -272,26 +306,26 @@ if __name__ == '__main__':
 #    R, A, S= matrix(W,D)
 #    svd_matrix(W,D)
 
-#    f = h5py.File('projection.hdf5', 'r')
-#    dataset = f['D']
-#    data = np.empty(dataset.shape, dataset.dtype)
-#    dataset.read_direct(data)
-#    dataset = f['Ind']
-#    indices = np.empty(dataset.shape, dataset.dtype)
-#    dataset.read_direct(indices)
-#    dataset = f['IP']
-#    indptr = np.empty(dataset.shape, dataset.dtype)
-#    dataset.read_direct(indptr)
-#    dataset = f['S']
-#    sob = np.empty(dataset.shape, dataset.dtype)
-#    dataset.read_direct(sob)
-#    S = (sob[0], sob[1])
-#    f.close()
+    f = h5py.File('projection.hdf5', 'r')
+    dataset = f['D']
+    data = np.empty(dataset.shape, dataset.dtype)
+    dataset.read_direct(data)
+    dataset = f['Ind']
+    indices = np.empty(dataset.shape, dataset.dtype)
+    dataset.read_direct(indices)
+    dataset = f['IP']
+    indptr = np.empty(dataset.shape, dataset.dtype)
+    dataset.read_direct(indptr)
+    dataset = f['S']
+    sob = np.empty(dataset.shape, dataset.dtype)
+    dataset.read_direct(sob)
+    S = (sob[0], sob[1])
+    f.close()
 
-#    A = ss.csr_matrix((data,indices,indptr), shape=S)
-
-#    R = semi_matrix(W,A)
-    R = simple(W)
+    A = ss.csr_matrix((data,indices,indptr), shape=S)
+    print A.shape
+    R = semi_matrix(W,A)
+#    R = simple(W)
 
 
 #    f = h5py.File('projection.hdf5', 'w')
