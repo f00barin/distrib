@@ -1,7 +1,3 @@
-from cvxmod import problem, minimize, optvar, ones, speye, diag
-from cvxmod.atoms import norm1
-import cvxopt
-import cvxopt.solvers
 import sys, fileinput, re
 from nltk import trigrams
 from nltk.corpus import stopwords, wordnet, wordnet_ic
@@ -153,19 +149,46 @@ def semi_matrix(W,A):
     Result = ((W*A)*(W.transpose().tocsr()))
     return Result
 
+def fnorm(W,D):
+    S = 0
+    Diff = (W - D).todense()
+    for i in range (0, Diff.shape[0]):
+        for j in range (0, Diff.shape[1]):
+            S += (Diff[i,j])*(Diff[i,j])
+    Result = np.sqrt(S)
+    return Result
+
+
 
 def svd_matrix(W,D):
     Winv = ss.csr_matrix(np.linalg.pinv(W.todense()))
     WTinv = ss.csr_matrix(np.linalg.pinv(W.transpose().todense()))
 #    A = np.dot(np.dot(Winv, D), WTinv)
     A = ((Winv*D)*WTinv)
-    k = np.rank(A)-1
     A = A.tocsc()
-    (ut, s, vt) = sparsesvd(A, 337)
+    res_dict = {}
+    old_z = 0
+    for k in range (270, 280):
+        (ut, s, vt) = sparsesvd(A, k)
+        U = ss.csr_matrix(ut.T)
+        S = ss.csr_matrix(np.diag(s))
+        V = ss.csr_matrix(vt)
+        L = (W*U)*(S*V*W.transpose())
+        z = U.shape[1]
+        if z == old_z:
+            break
+        else: 
+            Res = fnorm(L,D)
+            res_dict[z] = Res
+            Result = OrderedDict(sorted(res_dict.items(), key=lambda t: np.float64(t[1])))
+            old_z = z
+    return Result
+
+#def l1em(W,D):
+            # We are trying to learn the quantity x  
+
 #    (u, s, v) = ssl.svds(A,k) 
-    print ut.shape, s.shape, vt.shape
-    print np.allclose(A.todense(), np.dot(ut.T, np.dot(np.diag(s), vt)))
-    print np.allclose(vt, np.dot(ut.T, np.diag(s)))
+    
 #    Result = np.dot( np.dot(W,A), W.transpose().tocsr())
 #    Result = ((W*A)*(W.transpose().tocsr()))
 #    return Result
@@ -177,14 +200,15 @@ def simple(W):
 def rank(Input, D, R):
     content = [word.strip() for word in open(Input)]
     k = 0
-    rank = tr_rank = []
+    rank = []
+    tr_rank = []
     ResultMatrix = R.todense()
     TruthMatrix = D.todense()
     for i in content:
         l = 0
         d = {}
         e = {}
-        r = 0
+        r = []
         rc = 0
         tr = 0
         trr = 0
@@ -201,10 +225,7 @@ def rank(Input, D, R):
         C = OrderedDict(reversed(sorted(d.items(), key=lambda t: np.float(t[1])))).keys()
 
         T = OrderedDict(reversed(sorted(e.items(), key=lambda t: np.float(t[1])))).keys()
-        
-        Cv = OrderedDict(reversed(sorted(d.items(), key=lambda t: np.float(t[1])))).values()
-        Tv = OrderedDict(reversed(sorted(e.items(), key=lambda t: np.float(t[1])))).values()
-        
+
         for m in range(0,15):
             print '\t', T[m], '\t\t' ,C[m]
 
@@ -215,119 +236,63 @@ def rank(Input, D, R):
         print "\t", tr, "\t\t", rc 
         k += 1
         for n in T:
-            r += C.index(n)+1
+            r.append(abs((C.index(n)) - T.index(n)))
             iterr += 1
             trr += iterr
-        rank.append(rc/float(len(content)))
-        tr_rank.append(trr/float(len(content)))
+        print r
+        z = sum(r)
+        print z
+        rank.append(z)
+        tr_rank.append(trr)
     Av_rank = sum(rank)/float(len(content))
     TAv_rank = sum(tr_rank)/float(len(content))
-    print "Average Rank", Av_rank
-    print "Truth Average Rank", TAv_rank
-
-matrix = cvxopt.base.matrix
-
-def eye(N):
-    """ Return I""" 
-    return matrix([ [0]*i + [1] + [0]*(N-i-1) for i in range(N)], (N,N), 'd')
-
-def ones_v(n):
-    """Return column vectores of length n"""
-    return matrix(1, (n,1), 'd')
-
-def zeros_v(n):
-    """Return zero vectors """
-    return matrix (0,(n,1),'d')
-
-def concathoriz(m1, m2):
-    """ Concatenate two matrices horizontally """
-    r1, c1 = m1.size
-    r2, c2 = m2.size
-    if  r1 != r2:
-        raise TypeError('Heights don''t match, %d and %d' % (r1,r2))
-    return matrix(list(m1)+list(m2), (r1,c1+c2), 'd')
-    r1, c1 = m1.size
-    r2, c2 = m2.size
-    if  c1 != c2:
-        raise TypeError('Widths don''t match, %d and %d' % (c1, c2))
-    
-    return concathoriz(m1.trans(), m2.trans()).trans()
-    
- 
-
-
-def l1_error(W,D):
-    """this uses cvxopt"""
-
-    n = W.size[1]
-    c0 = ones_v(2*n)
-    G1 = concathoriz(W,-W)
-    G2 = concathoriz(-W,W)
-    G3 = -eye(2*n)
-    G = reduce(concatvert, [G1,G2,G3])
-    hh = reduce(concatvert, [D, -D, zeros_v(2*n)])
-    u = cvxopt.solvers.lp(c0, G, hh, solver=solver)
-    v = u['x'][:n]
-    return v
-
-def solve_plain_l1_cvxmod(W, D):
-    
-    x = optvar('x', W.size[1])
-    p = problem(minimize(norm1(x)), [W*x == y])
-    p.solve(quiet=True, solver='glpk')
-    return x.value
-
-def solve_rw_l1_cvxmod(A, y, iters=6):
-    W = speye(A.size[1])
-    x = optvar('x', A.size[1])
-    epsilon = 0.5
-    for i in range(iters):
-        last_x = matrix(x.value) if x.value else None
-        p = problem(minimize(norm1(W*x)), [A*x == y])
-        p.solve(quiet=True, cvxoptsolver='glpk')
-        ww = abs(x.value) + epsilon
-        W = diag(matrix([1/w for w in ww]))
-        if last_x:
-            err = ( (last_x - x.value).T * (last_x - x.value) )[0]
-            if err < 1e-4:
-                break
-    return x.value
+#    print "Average Rank", Av_rank
+#    print "Truth Average Rank", TAv_rank
+#    print rank
+#    print tr_rank
 
 if __name__ == '__main__':
-
     W = prefsuff()
-
-#    D = truth()
+    D = truth()
 #    D = lch_truth()
 #    D = wup_truth()
 #    D = jcn_truth()
-    D = lin_truth()
-
+#    D = lin_truth()
 #    R, A, S= matrix(W,D)
-#    svd_matrix(W,D)
+    R = svd_matrix(W,D)
+#    Z = fnorm(D,D)
+##   print Z
+    print R
+#    Winv = ss.csr_matrix(np.linalg.pinv(W.todense()))
+#    WTinv = ss.csr_matrix(np.linalg.pinv(W.transpose().todense()))
+#    X = (((W*Winv)*D))*(WTinv*W.transpose().tocsr())
+#    print X.shape
+#    Y = fnorm(X,D)
+#    Z = fnorm (R,D)
+#    print Y,Z
+    
 
-    f = h5py.File('projection.hdf5', 'r')
-    dataset = f['D']
-    data = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(data)
-    dataset = f['Ind']
-    indices = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(indices)
-    dataset = f['IP']
-    indptr = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(indptr)
-    dataset = f['S']
-    sob = np.empty(dataset.shape, dataset.dtype)
-    dataset.read_direct(sob)
-    S = (sob[0], sob[1])
-    f.close()
 
-    A = ss.csr_matrix((data,indices,indptr), shape=S)
-    print A.shape
-    R = semi_matrix(W,A)
+
+#    f = h5py.File('projection.hdf5', 'r')
+#    dataset = f['D']
+#    data = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(data)
+#    dataset = f['Ind']
+#    indices = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(indices)
+#    dataset = f['IP']
+#    indptr = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(indptr)
+#    dataset = f['S']
+#    sob = np.empty(dataset.shape, dataset.dtype)
+#    dataset.read_direct(sob)
+#    S = (sob[0], sob[1])
+#    f.close()
+#    A = ss.csr_matrix((data,indices,indptr), shape=S)
+#    R = semi_matrix(W,A)
 #    R = simple(W)
-
-
+    
 #    f = h5py.File('projection.hdf5', 'w')
 #    dset = f.create_dataset('D', data=A.data)
 #    dset = f.create_dataset('Ind', data=A.indices)
@@ -335,6 +300,5 @@ if __name__ == '__main__':
 #    dset = f.create_dataset('S', data=S)
 #    f.close()
 
-    Input = sys.argv[2]
-    rank(Input, D, R)
-
+#    Input = sys.argv[2]
+#    rank(Input, D, R)
