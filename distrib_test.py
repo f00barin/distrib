@@ -299,6 +299,36 @@ def svd_matrix(W, D):
 
     return Result
 
+def test_svd_matrix(W, WT, D, DT):
+    Winv = ss.csr_matrix(np.linalg.pinv(W.todense()))
+    WTinv = ss.csr_matrix(np.linalg.pinv(W.transpose().todense()))
+#    A = np.dot(np.dot(Winv, D), WTinv)
+    A = ((Winv * D) * WTinv)
+    A = A.tocsc()
+    res_dict = {}
+    old_z = 0
+
+    for k in range(270, 280):
+        (ut, s, vt) = sparsesvd(A, k)
+        U = ss.csr_matrix(ut.T)
+        S = ss.csr_matrix(np.diag(s))
+        V = ss.csr_matrix(vt)
+        L = (W * U) * (S * V * WT.transpose())
+        z = U.shape[1]
+
+        if z == old_z:
+            break
+
+        else:
+            Res = fnorm(L, DT)
+            res_dict[z] = Res
+            Result = OrderedDict(sorted(res_dict.items(),
+                key=lambda t: np.float64(t[1])))
+            old_z = z
+
+    return Result
+
+
 #def l1em(W,D):
             # We are trying to learn the quantity x
 
@@ -400,7 +430,7 @@ if __name__ == '__main__':
 #    D = wup_truth()
 #    D = jcn_truth()
 #    D = lin_truth()
-    X, A, S = matrix(W, D)
+#    X, A, S = matrix(W, D)
 #    R = svd_matrix(W,D)
 #    Z = fnorm(D,D)
 ##   print Z
@@ -429,7 +459,7 @@ if __name__ == '__main__':
 #    S = (sob[0], sob[1])
 #    f.close()
 #    A = ss.csr_matrix((data,indices,indptr), shape=S)
-    R = semi_matrix(W, WT, A)
+#    R = semi_matrix(W, WT, A)
 #    R = simple(W)
 
 #    f = h5py.File('projection.hdf5', 'w')
@@ -441,4 +471,4 @@ if __name__ == '__main__':
 
     Input = sys.argv[2]
     Input2 = sys.argv[3]
-    rank(Input, Input2, D, R)
+    rank(Input, Input2, DT, R)
