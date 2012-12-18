@@ -11,10 +11,12 @@ import scipy.sparse as ss
 from collections import defaultdict, OrderedDict
 from sparsesvd import sparsesvd
 
-def cfor(first,test,update):
+
+def cfor(first, test, update):
     while test(first):
         yield first
         first = update(first)
+
 
 class Represent(object):
 
@@ -281,11 +283,10 @@ class Compute(object):
         svd_matrix = self.projection_matrix.tocsc()
         svd_dict = {}
         result_list = []
-        old_z = 0
         (U, S, VT) = sparsesvd(svd_matrix, (svd_matrix.shape[0] - 1))
         rank = (U.shape[0] - 1)
 
-        for k in cfor(1, lambda i: i<=rank, lambda i: i+100):
+        for k in cfor(1, lambda i: i <= rank, lambda i: i + 100):
 
             ut = U[:k]
             s = S[:k]
@@ -336,7 +337,6 @@ class Compute(object):
             truth_sort = OrderedDict(reversed(sorted(truth_dict.items(),
                 key=lambda t: np.float(t[1])))).keys()
 
-
             result_words = []
             truth_words = []
             iteration = 0
@@ -360,8 +360,8 @@ class Compute(object):
 
             row += 1
 
-        avg_rank = (float(sum(rankings)/len(rankings)))
+        avg_rank = (float(sum(rankings) / len(rankings)))
 
-
-        return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
+        return reference, avg_rank, rankings, result_word_list,
+        truth_word_list, targets
 
