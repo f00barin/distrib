@@ -12,9 +12,9 @@ import h5py
 from sparsesvd import sparsesvd
 
 
-Input1 = sys.argv[1]
-Input2 = sys.argv[2]
-Input3 = sys.argv[3]
+#Input1 = sys.argv[1]
+#Input2 = sys.argv[2]
+#Input3 = sys.argv[3]
 
 tri_freq = Counter()
 
@@ -23,7 +23,7 @@ scorepref = defaultdict(list)
 reversehash = defaultdict(list)
 
 
-def prefsuff():
+def prefsuff(Input1, Input2):
     arr = []
 
     for line in fileinput.input([Input1]):
@@ -73,7 +73,7 @@ def prefsuff():
     return W
 
 
-def test_prefsuff():
+def test_prefsuff(Input1, Input3):
     arr = []
 
     for line in fileinput.input([Input1]):
@@ -124,7 +124,7 @@ def test_prefsuff():
 
 
 
-def truth():
+def truth(Input2):
     content = [word.strip() for word in open(Input2)]
     truth_arr = []
 
@@ -144,7 +144,7 @@ def truth():
 
 
 
-def test_truth():
+def test_truth(Input2, Input3):
     content = [word.strip() for word in open(Input2)]
     test_content = [word.strip() for word in open(Input3)]
 
@@ -275,11 +275,12 @@ def svd_matrix(W, D):
     WTinv = ss.csr_matrix(np.linalg.pinv(W.transpose().todense()))
 #    A = np.dot(np.dot(Winv, D), WTinv)
     A = ((Winv * D) * WTinv)
+    print A.shape
     A = A.tocsc()
     res_dict = {}
     old_z = 0
 
-    for k in range(270, 280):
+    for k in range(279, 280):
         (ut, s, vt) = sparsesvd(A, k)
         U = ss.csr_matrix(ut.T)
         S = ss.csr_matrix(np.diag(s))
@@ -317,7 +318,7 @@ def simple(W):
 def rank(Input1, Input2, D, R):
 
     f = h5py.File('all_data', 'w')
-    content = [word.strip() for word in open(Input)]
+    content = [word.strip() for word in open(Input1)]
     test_content = [word.strip() for word in open(Input2)]
  
     k = 0
@@ -394,14 +395,15 @@ def rank(Input1, Input2, D, R):
 if __name__ == '__main__':
     W = prefsuff()
     D = truth()
-    WT = test_prefsuff()
-    DT = test_truth()
+#    WT = test_prefsuff()
+#    DT = test_truth()
 #    D = lch_truth()
 #    D = wup_truth()
 #    D = jcn_truth()
 #    D = lin_truth()
-    X, A, S = matrix(W, D)
-#    R = svd_matrix(W,D)
+#    X, A, S = matrix(W, D)
+    R = svd_matrix(W,D)
+    print R
 #    Z = fnorm(D,D)
 ##   print Z
 #    print R
@@ -429,7 +431,7 @@ if __name__ == '__main__':
 #    S = (sob[0], sob[1])
 #    f.close()
 #    A = ss.csr_matrix((data,indices,indptr), shape=S)
-    R = semi_matrix(W, WT, A)
+#    R = semi_matrix(W, WT, A)
 #    R = simple(W)
 
 #    f = h5py.File('projection.hdf5', 'w')
@@ -439,6 +441,6 @@ if __name__ == '__main__':
 #    f.create_dataset('S', data=S)
 #    f.close()
 
-    Input = sys.argv[2]
-    Input2 = sys.argv[3]
-    rank(Input, Input2, D, R)
+#    Input = sys.argv[2]
+#    Input2 = sys.argv[3]
+#    rank(Input, Input2, D, R)
