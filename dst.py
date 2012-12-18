@@ -26,7 +26,7 @@ class Represent(object):
         scorepref = defaultdict(list)
         reversehash = defaultdict(list)
 
-        for line in fileinput.input([self.source]):
+        for line in fileinput.input(self.source):
             punctuation = re.compile(r'[-.?!,":;()|0-9]')
             line = punctuation.sub("", line.lower())
             tokens = re.findall(r'\w+', line, flags=re.UNICODE | re.LOCALE)
