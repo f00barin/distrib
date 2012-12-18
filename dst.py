@@ -285,8 +285,7 @@ class Compute(object):
         (U, S, VT) = sparsesvd(svd_matrix, (svd_matrix.shape[0] - 1))
         rank = (U.shape[0] - 1)
 
-        for k in cfor(1, lambda i: i<=rank, lambda i: i+50):
-#        for k in range(279, 280):
+        for k in cfor(1, lambda i: i<=rank, lambda i: i+100):
 
             ut = U[:k]
             s = S[:k]
@@ -322,7 +321,6 @@ class Compute(object):
             column = 0
             result_dict = {}
             truth_dict = {}
-            print "\n\n", i,"\n\n"
 
             for j in content_b:
 
@@ -335,8 +333,8 @@ class Compute(object):
 
             truth_sort = OrderedDict(reversed(sorted(truth_dict.items(),
                 key=lambda t: np.float(t[1])))).keys()
-#            print result_sort
-#            print truth_sort
+
+
             result_words = []
             truth_words = []
             iteration = 0
@@ -361,7 +359,6 @@ class Compute(object):
             row += 1
 
         avg_rank = (float(sum(rankings)/len(rankings)))
-#        return reference, result_sequence,
-#        truth_sequence, rankings, avg_rank
-        return reference, avg_rank, rankings
+
+        return reference, avg_rank, rankings, result_word_list, truth_word_list
 
