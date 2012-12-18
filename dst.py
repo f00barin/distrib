@@ -241,7 +241,7 @@ class Compute(object):
                 sumsquare += ((mat[i, j]) * (mat[i, j]))
 
         result = np.sqrt(sumsquare)
-        return result
+        return resultpro
 
     def matcal(self, type):
 
@@ -259,7 +259,7 @@ class Compute(object):
                     self.transpose_matrix.tocsr())
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
-            return projection_matrix, projection_matrix.shape, result, fresult
+            return projection_matrix, result, fresult
 
         elif type is 'basic':
 
@@ -313,11 +313,13 @@ class Compute(object):
         result_matrix = self.result_matrix.todense()
         truth_matrix = self.truth_matrix.todense()
         row = 0
+        targets = []
         rankings = []
         result_word_list = []
         truth_word_list = []
 
         for i in content_a:
+            targets.append(i)
             column = 0
             result_dict = {}
             truth_dict = {}
@@ -360,5 +362,6 @@ class Compute(object):
 
         avg_rank = (float(sum(rankings)/len(rankings)))
 
-        return reference, avg_rank, rankings, result_word_list, truth_word_list
+
+        return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
 
