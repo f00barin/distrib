@@ -314,35 +314,38 @@ class Compute(object):
         result_matrix = self.result_matrix.todense()
         truth_matrix = self.truth_matrix.todense()
         row = 0
-        rankings = truth_sequence = result_sequence = []
+        rankings = []
+        result_word_list = []
+        truth_word_list = []
 
         for i in content_a:
             column = 0
             result_dict = {}
             truth_dict = {}
-
-            result_word_list = truth_word_list = []
             print "\n\n", i,"\n\n"
-            for j in content_b:
 
-                rank_count = 0
-                tr_rank = 0
+            for j in content_b:
 
                 result_dict[str(j)] = result_matrix[row, column]
                 truth_dict[str(j)] = truth_matrix[row, column]
                 column += 1
+
             result_sort = OrderedDict(reversed(sorted(result_dict.items(),
                 key=lambda t: np.float(t[1])))).keys()
-            truth_sort = OrderedDict(reversed
-            (sorted(truth_dict.items(),
+
+            truth_sort = OrderedDict(reversed(sorted(truth_dict.items(),
                 key=lambda t: np.float(t[1])))).keys()
-            print truth_sort
+#            print result_sort
+#            print truth_sort
             result_words = []
             truth_words = []
             iteration = 0
             rank = 0
+            rank_count = 0
+            tr_rank = 0
+
             for l in range(0, 10):
-                ##print result_sort[l]
+
                 result_words.append(result_sort[l])
                 truth_words.append(truth_sort[l])
                 rank_count += (result_sort.index(truth_sort[l]) + 1)
@@ -352,13 +355,12 @@ class Compute(object):
             rank = float(rank_count / 10.0)
             reference = float(tr_rank / 10.0)
             result_word_list.append(result_words)
-            rankings.append(rank)
             truth_word_list.append(truth_words)
+            rankings.append(rank)
+
             row += 1
 
-        result_sequence.append(result_word_list)
-        truth_sequence.append(truth_word_list)
-        avg_rank = 0
+        avg_rank = (float(sum(rankings)/len(rankings)))
 #        return reference, result_sequence,
 #        truth_sequence, rankings, avg_rank
         return reference, result_sequence, truth_sequence
