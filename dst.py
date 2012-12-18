@@ -297,12 +297,10 @@ class Compute(object):
             matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
                 matrix_vt * self.transpose_matrix))
             result_list.append(matrix_result)
-            z = matrix_u.shape[0]
 
             difference = (matrix_result - self.truth_matrix)
             fresult = self.fnorm(difference)
-            svd_dict[z] = fresult
-            old_z = z
+            svd_dict[k] = fresult
 
         result = OrderedDict(sorted(svd_dict.items(),
                     key=lambda t: np.float64(t[1])))
