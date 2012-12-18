@@ -241,7 +241,7 @@ class Compute(object):
                 sumsquare += ((mat[i, j]) * (mat[i, j]))
 
         result = np.sqrt(sumsquare)
-        return resultpro
+        return result
 
     def matcal(self, type):
 
