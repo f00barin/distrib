@@ -363,5 +363,5 @@ class Compute(object):
         avg_rank = (float(sum(rankings)/len(rankings)))
 #        return reference, result_sequence,
 #        truth_sequence, rankings, avg_rank
-        return reference, result_sequence, truth_sequence
+        return reference
 
