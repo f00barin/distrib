@@ -271,40 +271,40 @@ class Compute(object):
             fresult = self.fnorm(difference)
             return result, fresult
 
-        elif type is 'matrixsvd':
+    def matrixsvd(self):
 
-            svd_matrix = self.projection_matrix.tocsc()
-            svd_dict = {}
-            result_list = []
-            old_z = 0
+        svd_matrix = self.projection_matrix.tocsc()
+        svd_dict = {}
+        result_list = []
+        old_z = 0
 #            (temp1, temp2, temp3) = sparsesvd(svd_matrix,
 #            (svd_matrix.shape[0] - 1))
 #            rank = (temp1.shape[0] - 1)
 
 #            for k in range((rank - 20), rank):
-            for k in range(279, 280):
+        for k in range(279, 280):
 
-                (ut, s, vt) = sparsesvd(svd_matrix, k)
-                matrix_u = ss.csr_matrix(ut.T)
-                matrix_s = ss.csr_matrix(np.diag(s))
-                matrix_vt = ss.csr_matrix(vt)
-                matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
-                    matrix_vt * self.transpose_matrix))
-                result_list.append(matrix_result)
-                z = matrix_u.shape[0]
+            (ut, s, vt) = sparsesvd(svd_matrix, k)
+            matrix_u = ss.csr_matrix(ut.T)
+            matrix_s = ss.csr_matrix(np.diag(s))
+            matrix_vt = ss.csr_matrix(vt)
+            matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
+                matrix_vt * self.transpose_matrix))
+            result_list.append(matrix_result)
+            z = matrix_u.shape[0]
 
-                if z == old_z:
-                    break
+            if z == old_z:
+                break
 
-                else:
-                    difference = (matrix_result - self.truth_matrix)
-                    fresult = self.fnorm(difference)
-                    svd_dict[z] = fresult
-                    old_z = z
+            else:
+                difference = (matrix_result - self.truth_matrix)
+                fresult = self.fnorm(difference)
+                svd_dict[z] = fresult
+                old_z = z
 
-            result = OrderedDict(sorted(svd_dict.items(),
-                        key=lambda t: np.float64(t[1])))
-            return result, result_list
+        result = OrderedDict(sorted(svd_dict.items(),
+                    key=lambda t: np.float64(t[1])))
+        return result, result_list
 
     def ranking(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
