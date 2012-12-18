@@ -118,6 +118,7 @@ class Similarity(object):
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
+
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.lch_similarity(synB)
                 similarity.append(sim)
@@ -138,6 +139,7 @@ class Similarity(object):
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
+
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.wup_similarity(synB)
                 similarity.append(sim)
@@ -181,6 +183,7 @@ class Similarity(object):
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
+                
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.lin_similarity(synB, semcor_ic)
                 similarity.append(sim)
