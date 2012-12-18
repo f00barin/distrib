@@ -289,10 +289,10 @@ class Compute(object):
 #        for k in range(279, 280):
 
             ut = U[:k]
-            s = (np.diag(S))[:k]
+            s = S[:k]
             vt = VT[:k]
             matrix_u = ss.csr_matrix(ut.T)
-            matrix_s = ss.csr_matrix(s)
+            matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
             matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
                 matrix_vt * self.transpose_matrix))
