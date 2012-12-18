@@ -288,10 +288,10 @@ class Compute(object):
         for k in cfor(1, lambda i: i<=rank, lambda i: i+50):
 #        for k in range(279, 280):
 
-            ut = (U.T)[:k]
+            ut = U[:k]
             s = (np.diag(S))[:k]
             vt = VT[:k]
-            matrix_u = ss.csr_matrix(ut)
+            matrix_u = ss.csr_matrix(ut.T)
             matrix_s = ss.csr_matrix(s)
             matrix_vt = ss.csr_matrix(vt)
             matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
@@ -306,7 +306,8 @@ class Compute(object):
 
         result = OrderedDict(sorted(svd_dict.items(),
                     key=lambda t: np.float64(t[1])))
-        return result, result_list
+
+        return result, result_list, U, S, VT
 
     def ranking(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
