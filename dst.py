@@ -228,12 +228,13 @@ class Compute(object):
     def fnorm(self, value):
 
         sumsquare = 0
-        matrix = value.todense()
+        mat = value.todense()
 
-        for i in range(0, matrix.shape[0]):
+        for i in range(0, mat.shape[0]):
 
-            for j in range(0, matrix.shape[1]):
-                sumsquare += np.multiply((matrix[i, j]), (matrix[i, j]))
+            for j in range(0, mat.shape[1]):
+
+                sumsquare += ((mat[i, j]) * (mat[i, j]))
 
         result = np.sqrt(sumsquare)
         return result
