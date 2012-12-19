@@ -12,6 +12,14 @@ from collections import defaultdict, OrderedDict
 from sparsesvd import sparsesvd
 
 
+def pseduoinverse(matrix):
+    ut, s, vt = sparsesvd(matrix.tocsc(), matrix.shape[0])
+    UT = ss.csr_matrix(ut)
+    S = ss.csr_matrix(np.diag(s))
+    V = ss.csr_matrix(vt.T)
+
+    pinv_matrix =
+
 def cfor(first, test, update):
     while test(first):
         yield first
@@ -26,7 +34,6 @@ class Represent(object):
 
     def prefsuff(self):
 
-        arr = []
         tri_freq = Counter()
         hashpref = defaultdict(list)
         scorepref = defaultdict(list)
@@ -59,9 +66,11 @@ class Represent(object):
                 reversehash[prefsuff].append(word)
 
         content = [word.strip() for word in open(self.target)]
+        M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
+        x = 0
 
         for i in content:
-            rows = []
+            y = 0
 
             for j in reversehash.keys():
 
@@ -70,12 +79,13 @@ class Represent(object):
                 else:
                     value = 0
 
-                rows.append(value)
+                M[x, y] = value
+                y += 1
 
-            arr.append(rows)
+            x += 1
 
-        W = sk.normalize(ss.csr_matrix(np.array(arr, dtype=np.float64)),
-        norm='l1', axis=1)
+        W = sk.normalize(M.tocsr(), norm='l1', axis=1)
+
         return W
 
 
@@ -96,63 +106,65 @@ class Similarity(object):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_arr = []
+        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        x = 0
 
         for i in content_a:
-            similarity = []
+            y = 0
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
 
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.path_similarity(synB)
-                similarity.append(sim)
+                truth_mat[x, y] = sim
 
-            truth_arr.append(similarity)
 
-        D = ss.csr_matrix(np.array(truth_arr, dtype=np.float64))
+
+        D = truth_mat.tocsr()
         return D
 
     def lch(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_arr = []
-
+        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        x = 0
         for i in content_a:
-            similarity = []
+            y = 0
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
 
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.lch_similarity(synB)
-                similarity.append(sim)
+                truth_mat[x, y] = sim
+                y += 1
 
-            truth_arr.append(similarity)
+            x += 1
 
-        D = ss.csr_matrix(np.array(truth_arr, dtype=np.float64))
+        D = truth_mat.tocsr()
         return D
 
     def wup(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_arr = []
-
+        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        x = 0
         for i in content_a:
-            similarity = []
+            y = 0
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
 
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.wup_similarity(synB)
-                similarity.append(sim)
+                truth_mat[x, y] = sim
+                y += 1
+            x += 1
 
-            truth_arr.append(similarity)
-
-        D = ss.csr_matrix(np.array(truth_arr, dtype=np.float64))
+        D = truth_mat.tocsr()
         return D
 
     def jcn(self):
@@ -160,21 +172,22 @@ class Similarity(object):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_arr = []
+        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        x = 0
 
         for i in content_a:
-            similarity = []
+            y = 0
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
 
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.jcn_similarity(synB, semcor_ic)
-                similarity.append(sim)
+                truth_mat[x, y] = sim
+                y += 1
+            x += 1
 
-            truth_arr.append(similarity)
-
-        D = ss.csr_matrix(np.array(truth_arr, dtype=np.float64))
+        D = truth_mat.tocsr()
         return D
 
     def lin(self):
@@ -182,21 +195,29 @@ class Similarity(object):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_arr = []
-
+        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        x = 0
         for i in content_a:
-            similarity = []
+            y = 0
             synA = wordnet.synset(i + ".n.01")
 
             for j in content_b:
 
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.lin_similarity(synB, semcor_ic)
-                similarity.append(sim)
+                truth_mat[x, y] = sim
+                y += 1
 
-            truth_arr.append(similarity)
+            x += 1
 
-        D = ss.csr_matrix(np.array(truth_arr, dtype=np.float64))
+        D = truth_mat.tocsr()
+        return D
+
+    def random_sim(self):
+        content_a = [word.strip() for word in open(self.wordset_a)]
+        content_b = [word.strip() for word in open(self.wordset_b)]
+
+        D = ss.rand(len(content_a), len(content_b), density=0.1, format='csr', dtype=np.float64)
         return D
 
 
@@ -286,7 +307,7 @@ class Compute(object):
         (U, S, VT) = sparsesvd(svd_matrix, (svd_matrix.shape[0] - 1))
         rank = (U.shape[0] - 1)
 
-        for k in cfor(1, lambda i: i <= rank, lambda i: i + 100):
+        for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
 
             ut = U[:k]
             s = S[:k]
@@ -306,6 +327,15 @@ class Compute(object):
                     key=lambda t: np.float64(t[1])))
 
         return result, result_list, U, S, VT
+
+    def wsvd(self):
+
+        svd_main_matrix = self.main_matrix.tocsc()
+        svd_dict = {}
+        result_list = []
+        UT, S, VT = sparsesvd(svd_main_matrix, (svd_matrix.shape[0] - 1))
+
+
 
     def ranking(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
@@ -362,6 +392,5 @@ class Compute(object):
 
         avg_rank = (float(sum(rankings) / len(rankings)))
 
-        return reference, avg_rank, rankings, result_word_list,
-        truth_word_list, targets
+        return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
 
