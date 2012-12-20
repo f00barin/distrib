@@ -312,7 +312,7 @@ class Compute(object):
                 (self.projection_matrix.tocsr().shape[0]))
         rank = U.shape[0]
 
-        for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
+        for k in cfor(1, lambda i: i <= rank, lambda i: i + 100):
 
             ut = U[:k]
             s = S[:k]
@@ -345,7 +345,7 @@ class Compute(object):
             mat_utt, mat_st, mat_vtt = sparsesvd(self.transpose_matrix.tocsc(),
                     self.transpose_matrix.shape[0])
 
-            for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
+            for k in cfor(1, lambda i: i <= rank, lambda i: i + 100):
                 ut = mat_ut[:k]
                 s = mat_s[:k]
                 vt = mat_vt[:k]
@@ -373,7 +373,7 @@ class Compute(object):
                     self.main_matrix.shape[0])
             rank = mat_ut.shape[0]
 
-            for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
+            for k in cfor(1, lambda i: i <= rank, lambda i: i + 100):
                 ut = mat_ut[:k]
                 s = mat_s[:k]
                 vt = mat_vt[:k]
