@@ -302,8 +302,8 @@ class Compute(object):
         svd_matrix = self.projection_matrix.tocsc()
         svd_dict = {}
         result_list = []
-        (U, S, VT) = sparsesvd(svd_matrix, (svd_matrix.shape[0] - 1))
-        rank = (U.shape[0] - 1)
+        (U, S, VT) = sparsesvd(svd_matrix, (self.projection_matrix[0]))
+        rank = U.shape[0]
 
         for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
 
@@ -330,9 +330,30 @@ class Compute(object):
 
         svd_dict = {}
         result_list = []
-        UT, S, VT = sparsesvd((svd_main_matrix.tocsc()), (svd_matrix.shape[0]))
+        mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
+                self.main_matrix.shape[0])
+        rank = mat_ut.shape[0]
+        for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
+            ut = mat_ut[:k]
+            s = mat_s[:k]
+            vt = mat_vt[:k]
+            UT = ss.csr_matrix(ut)
+            SI = ss.csr_matrix(np.diag(1/s))
+            VT = ss.csr_matrix(vt)
+            projection_func = (((VT.transpose() * SI * UT) *
+                self.truth_matrix) * (UT.transpose() * SI * VT))
+            matrix_result = ((self.main_matrix * projection_func) *
+                    self.transpose_matrix)
+            result_list.append(matrix_result)
 
+            difference = (matrix_result - self.truth_matrix)
+            fresult = self.fnorm(difference)
+            svd_dict[k] = fresult
 
+        result = OrderedDict(sorted(svd_dict.items(),
+                    key=lambda t: np.float64(t[1])))
+
+        return result, result_list
 
     def ranking(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
