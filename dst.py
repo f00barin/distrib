@@ -15,10 +15,11 @@ from sparsesvd import sparsesvd
 def pseduoinverse(matrix):
     ut, s, vt = sparsesvd(matrix.tocsc(), matrix.shape[0])
     UT = ss.csr_matrix(ut)
-    S = ss.csr_matrix(np.diag(s))
-    V = ss.csr_matrix(vt.T)
-
-    pinv_matrix =
+    SI = ss.csr_matrix(np.diag(1/s))
+    VT = ss.csr_matrix(vt)
+    pinv_matrix = VT.transpose() * SI * UT
+    pinv_matrix_t = UT.transpose() * SI * VT
+    return ss.csr_matrix(pinv_matrix), ss.csr_matrix(pinv_matrix_t)
 
 def cfor(first, test, update):
     while test(first):
@@ -118,8 +119,9 @@ class Similarity(object):
                 synB = wordnet.synset(j + ".n.01")
                 sim = synA.path_similarity(synB)
                 truth_mat[x, y] = sim
+                y += 1
 
-
+            x += 1
 
         D = truth_mat.tocsr()
         return D
@@ -268,11 +270,7 @@ class Compute(object):
 
     def matcal(self, type):
 
-        main_mat_inv = ss.csr_matrix(np.linalg.pinv
-        (self.main_matrix.todense()))
-
-        transpose_matrix_inv = ss.csr_matrix(np.linalg.pinv
-        (self.transpose_matrix.todense()))
+        (main_mat_inv, transpose_matrix_inv) = pseduoinverse(self.main_matrix)
 
         if type is 'regular':
 
