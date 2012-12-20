@@ -19,7 +19,7 @@ def pseduoinverse(matrix):
     VT = ss.csr_matrix(vt)
     pinv_matrix = VT.transpose() * SI * UT
     pinv_matrix_t = UT.transpose() * SI * VT
-    return ss.csr_matrix(pinv_matrix), ss.csr_matrix(pinv_matrix_t)
+    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
 def cfor(first, test, update):
     while test(first):
@@ -328,10 +328,9 @@ class Compute(object):
 
     def wsvd(self):
 
-        svd_main_matrix = self.main_matrix.tocsc()
         svd_dict = {}
         result_list = []
-        UT, S, VT = sparsesvd(svd_main_matrix, (svd_matrix.shape[0] - 1))
+        UT, S, VT = sparsesvd((svd_main_matrix.tocsc()), (svd_matrix.shape[0]))
 
 
 
