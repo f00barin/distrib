@@ -304,11 +304,11 @@ class Compute(object):
             return result, fresult
 
     def matrixsvd(self):
-
         svd_matrix = self.projection_matrix.tocsc()
         svd_dict = {}
         result_list = []
-        (U, S, VT) = sparsesvd(svd_matrix, (self.projection_matrix[0]))
+        (U, S, VT) = sparsesvd(svd_matrix.tocsc(),
+                (self.projection_matrix.tocsr().shape[0]))
         rank = U.shape[0]
 
         for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
