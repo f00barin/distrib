@@ -15,11 +15,12 @@ from sparsesvd import sparsesvd
 def pseduoinverse(matrix):
     ut, s, vt = sparsesvd(matrix.tocsc(), matrix.shape[0])
     UT = ss.csr_matrix(ut)
-    SI = ss.csr_matrix(np.diag(1/s))
+    SI = ss.csr_matrix(np.diag(1 / s))
     VT = ss.csr_matrix(vt)
     pinv_matrix = VT.transpose() * SI * UT
     pinv_matrix_t = UT.transpose() * SI * VT
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+
 
 def cfor(first, test, update):
     while test(first):
@@ -343,7 +344,7 @@ class Compute(object):
             rank = mat_ut.shape[0]
             mat_utt, mat_st, mat_vtt = sparsesvd(self.transpose_matrix.tocsc(),
                     self.transpose_matrix.shape[0])
- 
+
             for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
                 ut = mat_ut[:k]
                 s = mat_s[:k]
@@ -352,10 +353,10 @@ class Compute(object):
                 st = mat_st[:k]
                 vtt = mat_vtt[:k]
                 UT = ss.csr_matrix(ut)
-                SI = ss.csr_matrix(np.diag(1/s))
+                SI = ss.csr_matrix(np.diag(1 / s))
                 VT = ss.csr_matrix(vt)
                 UTT = ss.csr_matrix(utt)
-                SIT = ss.csr_matrix(np.diag(1/st))
+                SIT = ss.csr_matrix(np.diag(1 / st))
                 VTT = ss.csr_matrix(vtt)
                 projection_func = (((VT.transpose() * SI * UT) *
                     self.truth_matrix) * (VTT.transpose() * SIT * UTT))
@@ -366,7 +367,7 @@ class Compute(object):
                 difference = (matrix_result - self.truth_matrix)
                 fresult = self.fnorm(difference)
                 svd_dict[k] = fresult
-           
+
         else:
             mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
                     self.main_matrix.shape[0])
@@ -377,7 +378,7 @@ class Compute(object):
                 s = mat_s[:k]
                 vt = mat_vt[:k]
                 UT = ss.csr_matrix(ut)
-                SI = ss.csr_matrix(np.diag(1/s))
+                SI = ss.csr_matrix(np.diag(1 / s))
                 VT = ss.csr_matrix(vt)
                 projection_func = (((VT.transpose() * SI * UT) * self.truth_matrix) * (UT.transpose() * SI * VT))
                 matrix_result = ((self.main_matrix * projection_func) *
