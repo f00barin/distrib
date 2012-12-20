@@ -234,8 +234,10 @@ class Compute(object):
 
         if 'transpose_matrix' in kwargs:
             self.transpose_matrix = kwargs['transpose_matrix'].transpose()
+            self.are_equal = 'unset'
         else:
             self.transpose_matrix = self.main_matrix.transpose()
+            self.are_equal = 'set'
 
         if 'truth_matrix' in kwargs:
             self.truth_matrix = kwargs['truth_matrix']
@@ -270,7 +272,11 @@ class Compute(object):
 
     def matcal(self, type):
 
-        (main_mat_inv, transpose_matrix_inv) = pseduoinverse(self.main_matrix)
+        if self.are_equal is 'set':
+            (main_mat_inv, transpose_matrix_inv) = pseduoinverse(self.main_matrix)
+        else:
+            main_mat_inv, transpose_val1 = pseduoinverse(self.main_matrix)
+            transpose_matrix_inv, transpose_val2 = pseduoinverse(self.transpose_matrix)
 
         if type is 'regular':
 
@@ -330,25 +336,57 @@ class Compute(object):
 
         svd_dict = {}
         result_list = []
-        mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
-                self.main_matrix.shape[0])
-        rank = mat_ut.shape[0]
-        for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
-            ut = mat_ut[:k]
-            s = mat_s[:k]
-            vt = mat_vt[:k]
-            UT = ss.csr_matrix(ut)
-            SI = ss.csr_matrix(np.diag(1/s))
-            VT = ss.csr_matrix(vt)
-            projection_func = (((VT.transpose() * SI * UT) *
-                self.truth_matrix) * (UT.transpose() * SI * VT))
-            matrix_result = ((self.main_matrix * projection_func) *
-                    self.transpose_matrix)
-            result_list.append(matrix_result)
+        if self.are_equal is 'unset':
 
-            difference = (matrix_result - self.truth_matrix)
-            fresult = self.fnorm(difference)
-            svd_dict[k] = fresult
+            mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
+                    self.main_matrix.shape[0])
+            rank = mat_ut.shape[0]
+            mat_utt, mat_st, mat_vtt = sparsesvd(self.transpose_matrix.tocsc(),
+                    self.transpose_matrix.shape[0])
+ 
+            for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
+                ut = mat_ut[:k]
+                s = mat_s[:k]
+                vt = mat_vt[:k]
+                utt = mat_utt[:k]
+                st = mat_st[:k]
+                vtt = mat_vtt[:k]
+                UT = ss.csr_matrix(ut)
+                SI = ss.csr_matrix(np.diag(1/s))
+                VT = ss.csr_matrix(vt)
+                UTT = ss.csr_matrix(utt)
+                SIT = ss.csr_matrix(np.diag(1/st))
+                VTT = ss.csr_matrix(vtt)
+                projection_func = (((VT.transpose() * SI * UT) *
+                    self.truth_matrix) * (VTT.transpose() * SIT * UTT))
+                matrix_result = ((self.main_matrix * projection_func) *
+                        self.transpose_matrix)
+                result_list.append(matrix_result)
+
+                difference = (matrix_result - self.truth_matrix)
+                fresult = self.fnorm(difference)
+                svd_dict[k] = fresult
+           
+        else:
+            mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
+                    self.main_matrix.shape[0])
+            rank = mat_ut.shape[0]
+
+            for k in cfor(1, lambda i: i <= rank, lambda i: i + 10):
+                ut = mat_ut[:k]
+                s = mat_s[:k]
+                vt = mat_vt[:k]
+                UT = ss.csr_matrix(ut)
+                SI = ss.csr_matrix(np.diag(1/s))
+                VT = ss.csr_matrix(vt)
+                projection_func = (((VT.transpose() * SI * UT) * self.truth_matrix) * (UT.transpose() * SI * VT))
+                matrix_result = ((self.main_matrix * projection_func) *
+                        self.transpose_matrix)
+                result_list.append(matrix_result)
+
+                difference = (matrix_result - self.truth_matrix)
+                fresult = self.fnorm(difference)
+                svd_dict[k] = fresult
 
         result = OrderedDict(sorted(svd_dict.items(),
                     key=lambda t: np.float64(t[1])))
