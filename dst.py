@@ -12,11 +12,12 @@ from collections import defaultdict, OrderedDict
 from sparsesvd import sparsesvd
 from bisect import bisect_left
 
+
 class RemoveCol(object):
     def __init__(self, lilmatrix):
         self.lilmatrix = lilmatrix
 
-    def removecol(self,j):
+    def removecol(self, j):
         if j < 0:
             j += self.lilmatrix.shape[1]
 
@@ -34,16 +35,16 @@ class RemoveCol(object):
                 data[i].pop(pos)
                 if pos == len(rows[i]):
                     continue
-            for pos2 in xrange(pos,len(rows[i])):
+            for pos2 in xrange(pos, len(rows[i])):
                 rows[i][pos2] -= 1
 
-        self.lilmatrix._shape = (self.lilmatrix._shape[0],self.lilmatrix._shape[1]-1)
+        self.lilmatrix._shape = (self.lilmatrix._shape[0], self.lilmatrix._shape[1]-1)
         return self.lilmatrix
 
 
 def pseduoinverse(Mat, precision):
     matrix = Mat.tocsc()
-    k = int((precision * matrix.shape[0])/100)
+    k = int((precision * matrix.shape[0]) / 100)
     ut, s, vt = sparsesvd(matrix.tocsc(), k)
     UT = ss.csr_matrix(ut)
     SI = ss.csr_matrix(np.diag(1 / s))
@@ -61,6 +62,7 @@ def cfor(first, test, update):
 
 class Represent(object):
     default = None
+
     def __init__(self, source, target, **kwargs):
 
         self.source = source
@@ -75,7 +77,6 @@ class Represent(object):
             self.threshold = kwargs['threshold']
         else:
             self.threshold = 0
-
 
     def prefsuff(self):
 
@@ -130,22 +131,9 @@ class Represent(object):
             x += 1
 
         W = sk.normalize(M.tocsr(), norm='l1', axis=1)
-        
-        if self.threshold != 0:
-            WL = W.tolil()
-            WL_rows, WL_columns = WL.nonzero()
-            avg = (float(sum(W.data)) / float(len(W.data)))
-            t_value = (avg * self.threshold) / 100
-            
-            for i in range(0, len(WL_rows)):
-                
-                if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
-                    WL[(WL_rows[i]), (WL_columns[i])] = 0
 
-            W = WL
-
-        if self.splice != 0: 
-            WL = W.tolil()
+        if self.splice != 0:
+            WL = M.tolil()
             list_sum = WL.sum(axis=0).tolist()[0]
             mean = WL.sum(axis=0).mean()
             splice_value = (mean * self.splice) / 100
@@ -158,11 +146,22 @@ class Represent(object):
                 if col_sum < splice_value:
                     remcol.removecol(j)
                     list_sum.remove(col_sum)
-                    j += -1
 
                 else:
                     j += 1
 
+            W = sk.normalize(WL.tocsr(), norm='l1', axis=1)
+
+        if self.threshold != 0:
+            WL = W.tolil()
+            WL_rows, WL_columns = WL.nonzero()
+            avg = (float(sum(W.data)) / float(len(W.data)))
+            t_value = (avg * self.threshold) / 100
+
+            for i in range(0, len(WL_rows)):
+
+                if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
+                    WL[(WL_rows[i]), (WL_columns[i])] = 0
 
             W = WL
 
@@ -310,7 +309,7 @@ class Compute(object):
 
         if 'main_matrix' in kwargs:
             self.main_matrix = kwargs['main_matrix']
-        
+
         if 'precision' in kwargs:
             self.precision = kwargs['precision']
         else:
