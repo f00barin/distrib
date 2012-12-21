@@ -10,10 +10,41 @@ import sklearn.preprocessing as sk
 import scipy.sparse as ss
 from collections import defaultdict, OrderedDict
 from sparsesvd import sparsesvd
+from bisect import bisect_left
+
+class RemoveCol(object):
+    def __init__(self, lilmatrix):
+        self.lilmatrix = lilmatrix
+
+    def removecol(self,j):
+        if j < 0:
+            j += self.lilmatrix.shape[1]
+
+        if j < 0 or j >= self.lilmatrix.shape[1]:
+            raise IndexError('column index out of bounds')
+
+        rows = self.lilmatrix.rows
+        data = self.lilmatrix.data
+        for i in xrange(self.lilmatrix.shape[0]):
+            pos = bisect_left(rows[i], j)
+            if pos == len(rows[i]):
+                continue
+            elif rows[i][pos] == j:
+                rows[i].pop(pos)
+                data[i].pop(pos)
+                if pos == len(rows[i]):
+                    continue
+            for pos2 in xrange(pos,len(rows[i])):
+                rows[i][pos2] -= 1
+
+        self.lilmatrix._shape = (self.lilmatrix._shape[0],self.lilmatrix._shape[1]-1)
+        return self.lilmatrix
 
 
-def pseduoinverse(matrix):
-    ut, s, vt = sparsesvd(matrix.tocsc(), matrix.shape[0])
+def pseduoinverse(Mat, precision):
+    matrix = Mat.tocsc()
+    k = int((precision * matrix.shape[0])/100)
+    ut, s, vt = sparsesvd(matrix.tocsc(), k)
     UT = ss.csr_matrix(ut)
     SI = ss.csr_matrix(np.diag(1 / s))
     VT = ss.csr_matrix(vt)
@@ -30,13 +61,20 @@ def cfor(first, test, update):
 
 class Represent(object):
     default = None
-    def __init__(self, source, target, threshold=default):
+    def __init__(self, source, target, **kwargs):
+
         self.source = source
         self.target = target
-        if threshold is None:
-            self.threshold = 0
+
+        if 'splice' in kwargs:
+            self.splice = kwargs['splice']
         else:
-            self.threshold = threshold
+            self.splice = 0
+
+        if 'threshold' in kwargs:
+            self.threshold = kwargs['threshold']
+        else:
+            self.threshold = 0
 
 
     def prefsuff(self):
@@ -104,7 +142,29 @@ class Represent(object):
                 if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
                     WL[(WL_rows[i]), (WL_columns[i])] = 0
 
-            W = WL 
+            W = WL
+
+        if self.splice != 0: 
+            WL = W.tolil()
+            list_sum = WL.sum(axis=0).tolist()[0]
+            mean = WL.sum(axis=0).mean()
+            splice_value = (mean * self.splice) / 100
+            remcol = RemoveCol(WL.tolil())
+            j = 0
+
+            while j < len(list_sum):
+                col_sum = list_sum[j]
+
+                if col_sum < splice_value:
+                    remcol.removecol(j)
+                    list_sum.remove(col_sum)
+                    j += -1
+
+                else:
+                    j += 1
+
+
+            W = WL
 
         return W.tocsr()
 
@@ -250,6 +310,11 @@ class Compute(object):
 
         if 'main_matrix' in kwargs:
             self.main_matrix = kwargs['main_matrix']
+        
+        if 'precision' in kwargs:
+            self.precision = kwargs['precision']
+        else:
+            self.precision = 100
 
         if 'transpose_matrix' in kwargs:
             self.transpose_matrix = kwargs['transpose_matrix'].transpose()
@@ -292,10 +357,12 @@ class Compute(object):
     def matcal(self, type):
 
         if self.are_equal is 'set':
-            (main_mat_inv, transpose_matrix_inv) = pseduoinverse(self.main_matrix)
+
+            main_mat_inv, transpose_matrix_inv = pseduoinverse(self.main_matrix, self.precision)
         else:
-            main_mat_inv, transpose_val1 = pseduoinverse(self.main_matrix)
-            transpose_matrix_inv, transpose_val2 = pseduoinverse(self.transpose_matrix)
+            main_mat_inv, transpose_val1 = pseduoinverse(self.main_matrix,
+                    self.precision)
+            transpose_matrix_inv, transpose_val2 = pseduoinverse(self.transpose_matrix, self.precision)
 
         if type is 'regular':
 
