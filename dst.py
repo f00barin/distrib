@@ -29,10 +29,15 @@ def cfor(first, test, update):
 
 
 class Represent(object):
-
-    def __init__(self, source, target):
+    default = None
+    def __init__(self, source, target, threshold=default):
         self.source = source
         self.target = target
+        if threshold is None:
+            self.threshold = 0
+        else:
+            self.threshold = threshold
+
 
     def prefsuff(self):
 
@@ -87,8 +92,19 @@ class Represent(object):
             x += 1
 
         W = sk.normalize(M.tocsr(), norm='l1', axis=1)
+        
+        if self.threshold != 0:
+            WL = W.tolil()
+            WL_rows, WL_columns = WL.nonzero()
+            avg = (float(sum(W.data)) / float(len(W.data)))
+            t_value = (avg * self.threshold) / 100
+            for i in range(0, len(WL_rows)):
+                if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
+                    WL[(WL_rows[i]), (WL_columns[i])] = 0
 
-        return W
+            W = WL 
+
+        return W.tocsr()
 
 
 class Similarity(object):
@@ -281,8 +297,8 @@ class Compute(object):
 
         if type is 'regular':
 
-            projection_matrix = ((main_mat_inv * self.truth_matrix) *
-            transpose_matrix_inv)
+            projection_matrix = (main_mat_inv * (self.truth_matrix *
+                transpose_matrix_inv))
             result = ((self.main_matrix * projection_matrix) *
                     self.transpose_matrix.tocsr())
             difference = (result - self.truth_matrix)
