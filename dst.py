@@ -2,6 +2,7 @@
 
 import fileinput
 import re
+from os import remove as rm
 from nltk import trigrams
 from nltk.corpus import wordnet, wordnet_ic
 from recipy import Counter
@@ -11,6 +12,8 @@ import scipy.sparse as ss
 from collections import defaultdict, OrderedDict
 from sparsesvd import sparsesvd
 from bisect import bisect_left
+from scipy.io import mmread, mmwrite
+from pysparse import spmatrix
 
 
 class RemoveCol(object):
@@ -38,7 +41,9 @@ class RemoveCol(object):
             for pos2 in xrange(pos, len(rows[i])):
                 rows[i][pos2] -= 1
 
-        self.lilmatrix._shape = (self.lilmatrix._shape[0], self.lilmatrix._shape[1]-1)
+        self.lilmatrix._shape = (self.lilmatrix._shape[0],
+                self.lilmatrix._shape[1]-1)
+        del rows, data, i, j
         return self.lilmatrix
 
 
@@ -50,7 +55,8 @@ def pseduoinverse(Mat, precision):
     SI = ss.csr_matrix(np.diag(1 / s))
     VT = ss.csr_matrix(vt)
     pinv_matrix = VT.transpose() * SI * UT
-    pinv_matrix_t = UT.transpose() * SI * VT
+    pinv_matrix_t = UT.transpose() * SI * V
+    del ut, s, vt, UT, SI, VT
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
 
@@ -164,7 +170,8 @@ class Represent(object):
                     WL[(WL_rows[i]), (WL_columns[i])] = 0
 
             W = WL
-
+        del WL, hashpref, scorepref, reversehash, tri_freq, tri_tokens,
+        trigrams, M, content
         return W.tocsr()
 
 
@@ -202,6 +209,7 @@ class Similarity(object):
             x += 1
 
         D = truth_mat.tocsr()
+        del truth_mat, content_a, content_b
         return D
 
     def lch(self):
@@ -224,6 +232,7 @@ class Similarity(object):
             x += 1
 
         D = truth_mat.tocsr()
+        del truth_mat, content_a, content_b
         return D
 
     def wup(self):
@@ -245,6 +254,7 @@ class Similarity(object):
             x += 1
 
         D = truth_mat.tocsr()
+        del truth_mat, content_a, content_b
         return D
 
     def jcn(self):
@@ -268,6 +278,7 @@ class Similarity(object):
             x += 1
 
         D = truth_mat.tocsr()
+        del truth_mat, content_a, content_b
         return D
 
     def lin(self):
@@ -291,6 +302,7 @@ class Similarity(object):
             x += 1
 
         D = truth_mat.tocsr()
+        del truth_mat, content_a, content_b
         return D
 
     def random_sim(self):
@@ -364,13 +376,50 @@ class Compute(object):
             transpose_matrix_inv, transpose_val2 = pseduoinverse(self.transpose_matrix, self.precision)
 
         if type is 'regular':
+            # write to disk
+            mmwrite('main_mat_inv.mtx', main_mat_inv)
+            mmwrite('truth_matrix.mtx', self.truth_matrix)
+            mmwrite('transpose_matrix_inv.mtx', transpose_matrix_inv)
+            mmwrite('main_matrix.mtx', self.main_matrix)
+            mmwrite('transpose_matrix.mtx', self.transpose_matrix.tocsr())
+            # read it to a pysparse spmatrix
+            sp_main_mat_inv = spmatrix.ll_mat_from_mtx('main_mat_inv.mtx')
+            sp_truth_mat = spmatrix.ll_mat_from_mtx('truth_matrix.mtx')
+            sp_transpose_matrix_inv = spmatrix.ll_mat_from_mtx('transpose_matrix_inv.mtx')
+            sp_main_matrix = spmatrix.ll_mat_from_mtx('main_matrix.mtx')
+            sp_transpose_matrix = spmatrix.ll_mat_from_mtx('transpose_matrix.mtx')
+            #step-by-step multiplication
+            sp_temp_matrix = spmatrix.matrixmultiply(sp_main_mat_inv,
+                    sp_truth_mat)
+            sp_projection_matrix = spmatrix.matrixmultiply(sp_temp_matrix,
+                    sp_transpose_matrix_inv)
+            del sp_temp_matrix
 
-            projection_matrix = (main_mat_inv * (self.truth_matrix *
-                transpose_matrix_inv))
-            result = ((self.main_matrix * projection_matrix) *
-                    self.transpose_matrix.tocsr())
+            sp_temp_matrix = spmatrix.matrixmultiply(sp_main_matrix,
+                    sp_projection_matrix)
+            sp_result = spmatrix.matrixmultiply(sp_temp_matrix,
+                    sp_transpose_matrix)
+
+            p_data, p_row, p_col = sp_projection_matrix.find()
+            projection_matrix = ss.csr_matrix((p_data, (p_row, p_col)),
+                    shape=sp_projection_matrix.shape)
+            
+            r_data, r_row, r_col = sp_result.find()
+            result = ss.csr_matrix((r_data, (r_row, r_col)), 
+                    shape=sp_projection_matrix.shape)
+
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
+            
+            del sp_projection_matrix, sp_result, sp_transpose_matrix,
+            sp_main_matrix, sp_main_mat_inv, sp_transpose_matrix_inv
+            
+            rm('main_mat_inv.mtx')
+            rm('truth_matrix.mtx')
+            rm('transpose_matrix_inv.mtx')
+            rm('main_matrix.mtx')
+            rm('transpose_matrix.mtx')
+
             return projection_matrix, result, fresult
 
         elif type is 'basic':
