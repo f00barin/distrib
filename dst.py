@@ -46,6 +46,12 @@ class RemoveCol(object):
         del rows, data, i, j
         return self.lilmatrix
 
+    def __del__(self):
+        print 'destroyed'
+
+
+        
+
 
 def pseduoinverse(Mat, precision):
     matrix = Mat.tocsc()
@@ -173,6 +179,13 @@ class Represent(object):
         del WL, hashpref, scorepref, reversehash, tri_freq, tri_tokens,
         trigrams, M, content
         return W.tocsr()
+
+
+   def __del__(self):
+        print 'destroyed'
+
+
+
 
 
 class Similarity(object):
@@ -311,6 +324,10 @@ class Similarity(object):
 
         D = ss.rand(len(content_a), len(content_b), density=0.1, format='csr', dtype=np.float64)
         return D
+
+
+   def __del__(self):
+        print 'destroyed'
 
 
 class Compute(object):
@@ -453,8 +470,33 @@ class Compute(object):
             matrix_u = ss.csr_matrix(ut.T)
             matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
-            matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
-                matrix_vt * self.transpose_matrix))
+            # write to disk in mtx format 
+            mmwrite('main_matrix.mtx', self.main_matrix)
+            mmwrite('matrix_u.mtx', matrix_u)
+            mmwrite('matrix_s.mtx', matrix_s)
+            mmwrite('matrix_vt.mtx', matrix_vt)
+            mmwrite('transpose_matrix.mtx', self.transpose_matrix)
+            # read into pysparse matrices
+            sp_main_matrix = spmatrix.ll_mat_from_mtx('main_matrix.mtx')
+            sp_matrix_u = spmatrix.ll_mat_from_mtx('matrix_u.mtx')
+            sp_matrix_s = spmatrix.ll_mat_from_mtx('matrix_s.mtx')
+            sp_matrix_vt = spmatrix.ll_mat_from_mtx('matrix_vt.mtx')
+            sp_transpose_matrix = spmatrix.ll_mat_from_mtx('transpose_matrix.mtx')
+            # step-by-step multiplication
+            sp_temp_matrix1 = spmatrix.matrixmultiply(sp_main_matrix, sp_matrix_u)
+            sp_temp_matrix2 = spmatrix.matrixmultiply(sp_matrix_s, sp_matrix_vt)
+            sp_temp_matrix3 = spmatrix.matrixmultiply(sp_temp_matrix2, sp_transpose_matrix)
+            sp_matrix_result = spmatrix.matrixmultiply(sp_temp_matrix1, sp_temp_matrix3)
+            # back to original matrix 
+            data, row, col = sp_matrix_result.find()
+            matrix_result = ss.csr_matrix((data, (row, col)), shape=sp_matrix_result.shape)
+            #matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
+            #    matrix_vt * self.transpose_matrix))
+            rm('main_matrix.mtx')
+            rm('matrix_u.mtx')
+            rm('matrix_s.mtx')
+            rm('matrix_vt.mtx')
+            rm('transpose_matrix.mtx')
             result_list.append(matrix_result)
 
             difference = (matrix_result - self.truth_matrix)
@@ -583,4 +625,8 @@ class Compute(object):
         avg_rank = (float(sum(rankings) / len(rankings)))
 
         return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
+
+   def __del__(self):
+        print 'destroyed'
+
 
