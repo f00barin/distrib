@@ -16,6 +16,51 @@ from scipy.io import mmread, mmwrite
 from pysparse import spmatrix
 
 
+def spmatrixmul(matrix_a, matrix_b):
+    # write to disk.
+    mmwrite('matrix_a.mtx', matrix_a)
+    mmwrite('matrix_b.mtx', matrix_b)
+    # read it to form a pysparse spmatrix.
+    sp_matrix_a = spmatrix.ll_mat_from_mtx('matrix_a.mtx')
+    sp_matrix_b = spmatrix.ll_mat_from_mtx('matrix_b.mtx')
+    # multiply the matrices.
+    sp_result = spmatrix.matrixmultiply(sp_matrix_a, sp_matrix_b)
+    #conversion to scipy sparse matrix
+    data, row, col = sp_result.find()
+    result = ss.csr_matrix((data, (row, col)), shape=sp_result.shape)
+    #deleting files and refreshing memory
+    rm('matrix_a.mtx')
+    rm('matrix_b.mtx')
+    del sp_result, sp_matrix_a, sp_matrix_b, matrix_a, matrix_b
+
+    return result
+
+
+def pseduoinverse(Mat, precision):
+    matrix = Mat.tocsc()
+    k = int((precision * matrix.shape[0]) / 100)
+    ut, s, vt = sparsesvd(matrix.tocsc(), k)
+    UT = ss.csr_matrix(ut)
+    SI = ss.csr_matrix(np.diag(1 / s))
+    VT = ss.csr_matrix(vt)
+
+    temp_matrix = spmatrixmul(VT.transpose(), SI)
+    pinv_matrix = spmatrixmul(temp_matrix, UT)
+    del temp_matrix
+    
+    temp_matrix = spmatrixmul(UT.transpose(), SI)
+    pinv_matrix_t = spmatrixmul(temp_matrix, VT)
+    del ut, s, vt, UT, SI, VT, temp_matrix
+
+    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+
+
+def cfor(first, test, update):
+    while test(first):
+        yield first
+        first = update(first)
+
+
 class RemoveCol(object):
     def __init__(self, lilmatrix):
         self.lilmatrix = lilmatrix
@@ -47,29 +92,7 @@ class RemoveCol(object):
         return self.lilmatrix
 
     def __del__(self):
-        print 'destroyed'
-
-
-        
-
-
-def pseduoinverse(Mat, precision):
-    matrix = Mat.tocsc()
-    k = int((precision * matrix.shape[0]) / 100)
-    ut, s, vt = sparsesvd(matrix.tocsc(), k)
-    UT = ss.csr_matrix(ut)
-    SI = ss.csr_matrix(np.diag(1 / s))
-    VT = ss.csr_matrix(vt)
-    pinv_matrix = VT.transpose() * SI * UT
-    pinv_matrix_t = UT.transpose() * SI * V
-    del ut, s, vt, UT, SI, VT
-    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
-
-
-def cfor(first, test, update):
-    while test(first):
-        yield first
-        first = update(first)
+        self.free()
 
 
 class Represent(object):
@@ -90,6 +113,45 @@ class Represent(object):
         else:
             self.threshold = 0
 
+    def splicemat(matrix, value):
+
+        WL = matrix.tolil()
+        list_sum = WL.sum(axis=0).tolist()[0]
+        mean = WL.sum(axis=0).mean()
+        splice_value = (mean * value) / 100
+        remcol = RemoveCol(WL.tolil())
+        j = 0
+
+        while j < len(list_sum):
+            col_sum = list_sum[j]
+
+            if col_sum < splice_value:
+                remcol.removecol(j)
+                list_sum.remove(col_sum)
+
+            else:
+                j += 1
+
+        W = sk.normalize(WL.tocsr(), norm='l1', axis=1)
+        del WL, matrix
+
+        return W
+
+
+    def sparsify(matrix, value):
+        
+        WL = matrix.tolil()
+        WL_rows, WL_columns = WL.nonzero()
+        avg = (float(sum(W.data)) / float(len(W.data)))
+        t_value = (avg * self.threshold) / 100
+
+        for i in range(0, len(WL_rows)):
+
+            if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
+                WL[(WL_rows[i]), (WL_columns[i])] = 0
+
+        return WL
+ 
     def prefsuff(self):
 
         tri_freq = Counter()
@@ -142,50 +204,23 @@ class Represent(object):
 
             x += 1
 
-        W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.splice != 0:
-            WL = M.tolil()
-            list_sum = WL.sum(axis=0).tolist()[0]
-            mean = WL.sum(axis=0).mean()
-            splice_value = (mean * self.splice) / 100
-            remcol = RemoveCol(WL.tolil())
-            j = 0
+            W = self.splicemat(M, self.splice)
 
-            while j < len(list_sum):
-                col_sum = list_sum[j]
-
-                if col_sum < splice_value:
-                    remcol.removecol(j)
-                    list_sum.remove(col_sum)
-
-                else:
-                    j += 1
-
-            W = sk.normalize(WL.tocsr(), norm='l1', axis=1)
+        else:
+            W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
-            WL = W.tolil()
-            WL_rows, WL_columns = WL.nonzero()
-            avg = (float(sum(W.data)) / float(len(W.data)))
-            t_value = (avg * self.threshold) / 100
+            W = self.sparsify(W, self.threshold)
+            
+        del hashpref, scorepref, reversehash, tri_freq, tri_tokens, trigrams, M, content
 
-            for i in range(0, len(WL_rows)):
-
-                if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
-                    WL[(WL_rows[i]), (WL_columns[i])] = 0
-
-            W = WL
-        del WL, hashpref, scorepref, reversehash, tri_freq, tri_tokens,
-        trigrams, M, content
         return W.tocsr()
+        
 
-
-   def __del__(self):
-        print 'destroyed'
-
-
-
+    def __del__(self):
+        self.free()
 
 
 class Similarity(object):
@@ -326,8 +361,8 @@ class Similarity(object):
         return D
 
 
-   def __del__(self):
-        print 'destroyed'
+    def __del__(self):
+        self.free()
 
 
 class Compute(object):
@@ -393,63 +428,34 @@ class Compute(object):
             transpose_matrix_inv, transpose_val2 = pseduoinverse(self.transpose_matrix, self.precision)
 
         if type is 'regular':
-            # write to disk
-            mmwrite('main_mat_inv.mtx', main_mat_inv)
-            mmwrite('truth_matrix.mtx', self.truth_matrix)
-            mmwrite('transpose_matrix_inv.mtx', transpose_matrix_inv)
-            mmwrite('main_matrix.mtx', self.main_matrix)
-            mmwrite('transpose_matrix.mtx', self.transpose_matrix.tocsr())
-            # read it to a pysparse spmatrix
-            sp_main_mat_inv = spmatrix.ll_mat_from_mtx('main_mat_inv.mtx')
-            sp_truth_mat = spmatrix.ll_mat_from_mtx('truth_matrix.mtx')
-            sp_transpose_matrix_inv = spmatrix.ll_mat_from_mtx('transpose_matrix_inv.mtx')
-            sp_main_matrix = spmatrix.ll_mat_from_mtx('main_matrix.mtx')
-            sp_transpose_matrix = spmatrix.ll_mat_from_mtx('transpose_matrix.mtx')
-            #step-by-step multiplication
-            sp_temp_matrix = spmatrix.matrixmultiply(sp_main_mat_inv,
-                    sp_truth_mat)
-            sp_projection_matrix = spmatrix.matrixmultiply(sp_temp_matrix,
-                    sp_transpose_matrix_inv)
-            del sp_temp_matrix
+           # step-by-step multiplication
+            temp_matrix = spmatrixmul(self.truth_matrix, transpose_matrix_inv)
+            projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
+            del temp_matrix
 
-            sp_temp_matrix = spmatrix.matrixmultiply(sp_main_matrix,
-                    sp_projection_matrix)
-            sp_result = spmatrix.matrixmultiply(sp_temp_matrix,
-                    sp_transpose_matrix)
-
-            p_data, p_row, p_col = sp_projection_matrix.find()
-            projection_matrix = ss.csr_matrix((p_data, (p_row, p_col)),
-                    shape=sp_projection_matrix.shape)
-            
-            r_data, r_row, r_col = sp_result.find()
-            result = ss.csr_matrix((r_data, (r_row, r_col)), 
-                    shape=sp_projection_matrix.shape)
+            temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
+            result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+            del temp_matrix
 
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
             
-            del sp_projection_matrix, sp_result, sp_transpose_matrix,
-            sp_main_matrix, sp_main_mat_inv, sp_transpose_matrix_inv
-            
-            rm('main_mat_inv.mtx')
-            rm('truth_matrix.mtx')
-            rm('transpose_matrix_inv.mtx')
-            rm('main_matrix.mtx')
-            rm('transpose_matrix.mtx')
-
             return projection_matrix, result, fresult
 
         elif type is 'basic':
 
-            result = (self.main_matrix * self.transpose_matrix.tocsr())
+            result = spmatrixmul(self.main_matrix, self.transpose_matrix.tocsr())
+            
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
             return result, fresult
 
         elif type is 'testing':
 
-            result = ((self.main_matrix * self.projection_matrix) *
-                    self.transpose_matrix.tocsr())
+            temp_matrix = spmatrixmul(self.main_matrix, self.projection_matrix)
+            result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+            del temp_matrix
+
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
             return result, fresult
@@ -470,38 +476,18 @@ class Compute(object):
             matrix_u = ss.csr_matrix(ut.T)
             matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
-            # write to disk in mtx format 
-            mmwrite('main_matrix.mtx', self.main_matrix)
-            mmwrite('matrix_u.mtx', matrix_u)
-            mmwrite('matrix_s.mtx', matrix_s)
-            mmwrite('matrix_vt.mtx', matrix_vt)
-            mmwrite('transpose_matrix.mtx', self.transpose_matrix)
-            # read into pysparse matrices
-            sp_main_matrix = spmatrix.ll_mat_from_mtx('main_matrix.mtx')
-            sp_matrix_u = spmatrix.ll_mat_from_mtx('matrix_u.mtx')
-            sp_matrix_s = spmatrix.ll_mat_from_mtx('matrix_s.mtx')
-            sp_matrix_vt = spmatrix.ll_mat_from_mtx('matrix_vt.mtx')
-            sp_transpose_matrix = spmatrix.ll_mat_from_mtx('transpose_matrix.mtx')
-            # step-by-step multiplication
-            sp_temp_matrix1 = spmatrix.matrixmultiply(sp_main_matrix, sp_matrix_u)
-            sp_temp_matrix2 = spmatrix.matrixmultiply(sp_matrix_s, sp_matrix_vt)
-            sp_temp_matrix3 = spmatrix.matrixmultiply(sp_temp_matrix2, sp_transpose_matrix)
-            sp_matrix_result = spmatrix.matrixmultiply(sp_temp_matrix1, sp_temp_matrix3)
-            # back to original matrix 
-            data, row, col = sp_matrix_result.find()
-            matrix_result = ss.csr_matrix((data, (row, col)), shape=sp_matrix_result.shape)
-            #matrix_result = ((self.main_matrix * matrix_u) * (matrix_s *
-            #    matrix_vt * self.transpose_matrix))
-            rm('main_matrix.mtx')
-            rm('matrix_u.mtx')
-            rm('matrix_s.mtx')
-            rm('matrix_vt.mtx')
-            rm('transpose_matrix.mtx')
-            result_list.append(matrix_result)
+            
+            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
+            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
+            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
+            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
+            del temp_matrix, temp_matrix_a, temp_matrix_b
 
+            result_list.append(matrix_result)
             difference = (matrix_result - self.truth_matrix)
             fresult = self.fnorm(difference)
             svd_dict[k] = fresult
+            del matrix_result, fresult, difference
 
         result = OrderedDict(sorted(svd_dict.items(),
                     key=lambda t: np.float64(t[1])))
@@ -533,15 +519,27 @@ class Compute(object):
                 UTT = ss.csr_matrix(utt)
                 SIT = ss.csr_matrix(np.diag(1 / st))
                 VTT = ss.csr_matrix(vtt)
-                projection_func = (((VT.transpose() * SI * UT) *
-                    self.truth_matrix) * (VTT.transpose() * SIT * UTT))
-                matrix_result = ((self.main_matrix * projection_func) *
-                        self.transpose_matrix)
+                
+                temp_matrix_a = spmatrixmul(VT.transpose(), SI)
+                temp_matrix_b = spmatrixmul(temp_matrix_a, UT)
+                temp_matrix_c = spmatrixmul(temp_matrix_b, self.truth_matrix)
+                temp_matrix_d = spmatrixmul(VTT.transpose(), SIT)
+                temp_matrix_e = spmatrixmul(temp_matrix_d, UTT)
+
+                projection_func = spmatrixmul(temp_matrix_c, temp_matrix_e)
+                del temp_matrix_a, temp_matrix_b, temp_matrix_c, temp_matrix_d, temp_matrix_e
+
+                temp_matrix = spmatrixmul(self.main_matrix, projection_func)
+                matrix_result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+                del temp_matrix
+                
                 result_list.append(matrix_result)
 
                 difference = (matrix_result - self.truth_matrix)
                 fresult = self.fnorm(difference)
                 svd_dict[k] = fresult
+                del matrix_result, difference, fresult, ut, s, vt, utt, st, vtt, UT, SI, VT, UTT, SIT, VTT, projection_func
+
 
         else:
             mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
@@ -555,14 +553,25 @@ class Compute(object):
                 UT = ss.csr_matrix(ut)
                 SI = ss.csr_matrix(np.diag(1 / s))
                 VT = ss.csr_matrix(vt)
-                projection_func = (((VT.transpose() * SI * UT) * self.truth_matrix) * (UT.transpose() * SI * VT))
-                matrix_result = ((self.main_matrix * projection_func) *
-                        self.transpose_matrix)
-                result_list.append(matrix_result)
+                
+                temp_matrix_a = spmatrixmul(VT.transpose(), SI)
+                temp_matrix_b = spmatrixmul(temp_matrix_a, UT)
+                temp_matrix_c = spmatrixmul(temp_matrix_b, self.truth_matrix)
+                temp_matrix_d = spmatrixmul(UT.transpose(), SI)
+                temp_matrix_e = spmatrixmul(temp_matrix_d, VT)
 
+                projection_func = spmatrixmul(temp_matrix_c, temp_matrix_e)
+                del temp_matrix_a, temp_matrix_b, temp_matrix_c, temp_matrix_d, temp_matrix_e
+
+                temp_matrix = spmatrixmul(self.main_matrix, projection_func)
+                matrix_result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+                del temp_matrix
+
+                result_list.append(matrix_result)
                 difference = (matrix_result - self.truth_matrix)
                 fresult = self.fnorm(difference)
                 svd_dict[k] = fresult
+                del matrix_result, difference, fresult, ut, s, UT, SI, VT, projection_func
 
         result = OrderedDict(sorted(svd_dict.items(),
                     key=lambda t: np.float64(t[1])))
@@ -626,7 +635,7 @@ class Compute(object):
 
         return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
 
-   def __del__(self):
-        print 'destroyed'
+    def __del__(self):
+        self.free()
 
 
