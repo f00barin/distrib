@@ -143,7 +143,7 @@ class Represent(object):
         WL = matrix.tolil()
         WL_rows, WL_columns = WL.nonzero()
         avg = (float(sum(W.data)) / float(len(W.data)))
-        t_value = (avg * self.threshold) / 100
+        t_value = (avg * value) / 100
 
         for i in range(0, len(WL_rows)):
 
