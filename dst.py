@@ -3,7 +3,7 @@
 import fileinput
 import re
 from os import remove as rm
-from nltk import trigrams
+from nltk import trigrams, bigrams
 from nltk.corpus import wordnet, wordnet_ic
 from recipy import Counter
 import numpy as np
@@ -12,7 +12,7 @@ import scipy.sparse as ss
 from collections import defaultdict, OrderedDict
 from sparsesvd import sparsesvd
 from bisect import bisect_left
-from scipy.io import mmread, mmwrite
+from scipy.io import mmwrite
 from pysparse import spmatrix
 
 
@@ -47,7 +47,7 @@ def pseduoinverse(Mat, precision):
     temp_matrix = spmatrixmul(VT.transpose(), SI)
     pinv_matrix = spmatrixmul(temp_matrix, UT)
     del temp_matrix
-    
+
     temp_matrix = spmatrixmul(UT.transpose(), SI)
     pinv_matrix_t = spmatrixmul(temp_matrix, VT)
     del ut, s, vt, UT, SI, VT, temp_matrix
@@ -87,7 +87,7 @@ class RemoveCol(object):
                 rows[i][pos2] -= 1
 
         self.lilmatrix._shape = (self.lilmatrix._shape[0],
-                self.lilmatrix._shape[1]-1)
+                self.lilmatrix._shape[1] - 1)
         del rows, data, i, j
         return self.lilmatrix
 
@@ -134,9 +134,8 @@ class Represent(object):
 
         return W
 
-
     def sparsify(self, matrix, value):
-        
+
         WL = matrix.tolil()
         WL_rows, WL_columns = WL.nonzero()
         avg = (float(sum(matrix.data)) / float(len(matrix.data)))
@@ -148,7 +147,135 @@ class Represent(object):
                 WL[(WL_rows[i]), (WL_columns[i])] = 0
 
         return WL
- 
+
+    def suffix(self):
+
+        bi_freq = Counter()
+        hashpref = defaultdict(list)
+        scorepref = defaultdict(list)
+        reversehash = defaultdict(list)
+
+        for line in fileinput.input(self.source):
+            punctuation = re.compile(r'[-.?!,":;()|0-9]')
+            line = punctuation.sub("", line.lower())
+            tokens = re.findall(r'\w+', line, flags=re.UNICODE | re.LOCALE)
+            bi_tokens = bigrams(tokens)
+
+            for bi_token in bi_tokens:
+                bi_tok = bi_token[1] + "-" + bi_token[0]
+                bi_freq[bi_tok] += 1
+
+        fileinput.close()
+
+        combo = list(bi_freq.elements())
+
+        for i in combo:
+            word = i.split(r'-')[1]
+            suffix = i.split(r'-')[0]
+
+            if suffix not in hashpref[word]:
+                hashpref[word].append(suffix)
+                scorepref[word].append(bi_freq[i])
+
+            if word not in reversehash[suffix]:
+                reversehash[suffix].append(word)
+
+        content = [word.strip() for word in open(self.target)]
+        M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
+        x = 0
+
+        for i in content:
+            y = 0
+
+            for j in reversehash.keys():
+
+                if i in reversehash[j]:
+                    value = hashpref[i].index(j)
+                else:
+                    value = 0
+
+                M[x, y] = value
+                y += 1
+
+            x += 1
+
+        if self.splice != 0:
+            W = self.splicemat(M, self.splice)
+
+        else:
+            W = sk.normalize(M.tocsr(), norm='l1', axis=1)
+
+        if self.threshold != 0:
+            W = self.sparsify(W, self.threshold)
+
+        del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
+
+        return W.tocsr()
+
+    def prefix(self):
+
+        bi_freq = Counter()
+        hashpref = defaultdict(list)
+        scorepref = defaultdict(list)
+        reversehash = defaultdict(list)
+
+        for line in fileinput.input(self.source):
+            punctuation = re.compile(r'[-.?!,":;()|0-9]')
+            line = punctuation.sub("", line.lower())
+            tokens = re.findall(r'\w+', line, flags=re.UNICODE | re.LOCALE)
+            bi_tokens = bigrams(tokens)
+
+            for bi_token in bi_tokens:
+                bi_tok = bi_token[0] + "-" + bi_token[1]
+                bi_freq[bi_tok] += 1
+
+        fileinput.close()
+
+        combo = list(bi_freq.elements())
+
+        for i in combo:
+            word = i.split(r'-')[1]
+            prefix = i.split(r'-')[0]
+
+            if prefix not in hashpref[word]:
+                hashpref[word].append(prefix)
+                scorepref[word].append(bi_freq[i])
+
+            if word not in reversehash[prefix]:
+                reversehash[prefix].append(word)
+
+        content = [word.strip() for word in open(self.target)]
+        M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
+        x = 0
+
+        for i in content:
+            y = 0
+
+            for j in reversehash.keys():
+
+                if i in reversehash[j]:
+                    value = hashpref[i].index(j)
+                else:
+                    value = 0
+
+                M[x, y] = value
+                y += 1
+
+            x += 1
+
+        if self.splice != 0:
+            W = self.splicemat(M, self.splice)
+
+        else:
+            W = sk.normalize(M.tocsr(), norm='l1', axis=1)
+
+        if self.threshold != 0:
+            W = self.sparsify(W, self.threshold)
+
+        del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
+
+        return W.tocsr()
+
     def prefsuff(self):
 
         tri_freq = Counter()
@@ -201,7 +328,6 @@ class Represent(object):
 
             x += 1
 
-
         if self.splice != 0:
             W = self.splicemat(M, self.splice)
 
@@ -210,11 +336,10 @@ class Represent(object):
 
         if self.threshold != 0:
             W = self.sparsify(W, self.threshold)
-            
-        del hashpref, scorepref, reversehash, tri_freq, tri_tokens,  M, content
+
+        del hashpref, scorepref, reversehash, tri_freq, tri_tokens, M, content
 
         return W.tocsr()
-        
 
     def __del__(self):
         self.free()
@@ -357,7 +482,6 @@ class Similarity(object):
         D = ss.rand(len(content_a), len(content_b), density=0.1, format='csr', dtype=np.float64)
         return D
 
-
     def __del__(self):
         self.free()
 
@@ -436,13 +560,13 @@ class Compute(object):
 
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
-            
+
             return projection_matrix, result, fresult
 
         elif type is 'basic':
 
             result = spmatrixmul(self.main_matrix, self.transpose_matrix.tocsr())
-            
+
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
             return result, fresult
@@ -473,7 +597,7 @@ class Compute(object):
             matrix_u = ss.csr_matrix(ut.T)
             matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
-            
+
             temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
             temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
             temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
@@ -516,7 +640,7 @@ class Compute(object):
                 UTT = ss.csr_matrix(utt)
                 SIT = ss.csr_matrix(np.diag(1 / st))
                 VTT = ss.csr_matrix(vtt)
-                
+
                 temp_matrix_a = spmatrixmul(VT.transpose(), SI)
                 temp_matrix_b = spmatrixmul(temp_matrix_a, UT)
                 temp_matrix_c = spmatrixmul(temp_matrix_b, self.truth_matrix)
@@ -529,14 +653,13 @@ class Compute(object):
                 temp_matrix = spmatrixmul(self.main_matrix, projection_func)
                 matrix_result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
                 del temp_matrix
-                
+
                 result_list.append(matrix_result)
 
                 difference = (matrix_result - self.truth_matrix)
                 fresult = self.fnorm(difference)
                 svd_dict[k] = fresult
                 del matrix_result, difference, fresult, ut, s, vt, utt, st, vtt, UT, SI, VT, UTT, SIT, VTT, projection_func
-
 
         else:
             mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
@@ -550,7 +673,7 @@ class Compute(object):
                 UT = ss.csr_matrix(ut)
                 SI = ss.csr_matrix(np.diag(1 / s))
                 VT = ss.csr_matrix(vt)
-                
+
                 temp_matrix_a = spmatrixmul(VT.transpose(), SI)
                 temp_matrix_b = spmatrixmul(temp_matrix_a, UT)
                 temp_matrix_c = spmatrixmul(temp_matrix_b, self.truth_matrix)
@@ -634,5 +757,3 @@ class Compute(object):
 
     def __del__(self):
         self.free()
-
-
