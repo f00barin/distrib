@@ -91,9 +91,6 @@ class RemoveCol(object):
         del rows, data, i, j
         return self.lilmatrix
 
-    def __del__(self):
-        self.free()
-
 
 class Represent(object):
     default = None
@@ -113,7 +110,7 @@ class Represent(object):
         else:
             self.threshold = 0
 
-    def splicemat(matrix, value):
+    def splicemat(self, matrix, value):
 
         WL = matrix.tolil()
         list_sum = WL.sum(axis=0).tolist()[0]
@@ -138,11 +135,11 @@ class Represent(object):
         return W
 
 
-    def sparsify(matrix, value):
+    def sparsify(self, matrix, value):
         
         WL = matrix.tolil()
         WL_rows, WL_columns = WL.nonzero()
-        avg = (float(sum(W.data)) / float(len(W.data)))
+        avg = (float(sum(matrix.data)) / float(len(matrix.data)))
         t_value = (avg * value) / 100
 
         for i in range(0, len(WL_rows)):
@@ -214,7 +211,7 @@ class Represent(object):
         if self.threshold != 0:
             W = self.sparsify(W, self.threshold)
             
-        del hashpref, scorepref, reversehash, tri_freq, tri_tokens, trigrams, M, content
+        del hashpref, scorepref, reversehash, tri_freq, tri_tokens,  M, content
 
         return W.tocsr()
         
