@@ -55,6 +55,21 @@ def pseduoinverse(Mat, precision):
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
 
+def sparsify(matrix, value):
+
+    WL = matrix.tolil()
+    WL_rows, WL_columns = WL.nonzero()
+    avg = (float(sum(matrix.data)) / float(len(matrix.data)))
+    t_value = (avg * value) / 100
+
+    for i in range(0, len(WL_rows)):
+
+        if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
+            WL[(WL_rows[i]), (WL_columns[i])] = 0
+
+    return WL
+
+
 def cfor(first, test, update):
     while test(first):
         yield first
@@ -134,19 +149,6 @@ class Represent(object):
 
         return W
 
-    def sparsify(self, matrix, value):
-
-        WL = matrix.tolil()
-        WL_rows, WL_columns = WL.nonzero()
-        avg = (float(sum(matrix.data)) / float(len(matrix.data)))
-        t_value = (avg * value) / 100
-
-        for i in range(0, len(WL_rows)):
-
-            if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
-                WL[(WL_rows[i]), (WL_columns[i])] = 0
-
-        return WL
 
     def suffix(self):
 
@@ -206,7 +208,7 @@ class Represent(object):
             W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
-            W = self.sparsify(W, self.threshold)
+            W = sparsify(W, self.threshold)
 
         del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
 
@@ -270,7 +272,7 @@ class Represent(object):
             W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
-            W = self.sparsify(W, self.threshold)
+            W = sparsify(W, self.threshold)
 
         del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
 
@@ -335,7 +337,7 @@ class Represent(object):
             W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
-            W = self.sparsify(W, self.threshold)
+            W = sparsify(W, self.threshold)
 
         del hashpref, scorepref, reversehash, tri_freq, tri_tokens, M, content
 
@@ -349,9 +351,14 @@ class Similarity(object):
 
     default = None
 
-    def __init__(self, wordset_a, wordset_b=default):
+    def __init__(self, wordset_a, wordset_b=default, threshold=default):
 
         self.wordset_a = wordset_a
+        
+        if threshold == None:
+            self.threshold = 0
+        else: 
+            self.threshold = threshold
 
         if wordset_b is None:
             self.wordset_b = wordset_a
@@ -377,8 +384,12 @@ class Similarity(object):
                 y += 1
 
             x += 1
+        
+        if self.threshold != 0:
+            D = sparsify(truth_mat.tocsr(), self.threshold)
+        else:
+            D = truth_mat.tocsr()
 
-        D = truth_mat.tocsr()
         del truth_mat, content_a, content_b
         return D
 
@@ -401,7 +412,11 @@ class Similarity(object):
 
             x += 1
 
-        D = truth_mat.tocsr()
+        if self.threshold != 0:
+            D = sparsify(truth_mat.tocsr(), self.threshold)
+        else:
+            D = truth_mat.tocsr()
+
         del truth_mat, content_a, content_b
         return D
 
@@ -423,7 +438,11 @@ class Similarity(object):
                 y += 1
             x += 1
 
-        D = truth_mat.tocsr()
+        if self.threshold != 0:
+            D = sparsify(truth_mat.tocsr(), self.threshold)
+        else:
+            D = truth_mat.tocsr()
+
         del truth_mat, content_a, content_b
         return D
 
@@ -447,7 +466,11 @@ class Similarity(object):
                 y += 1
             x += 1
 
-        D = truth_mat.tocsr()
+        if self.threshold != 0:
+            D = sparsify(truth_mat.tocsr(), self.threshold)
+        else:
+            D = truth_mat.tocsr()
+
         del truth_mat, content_a, content_b
         return D
 
@@ -471,7 +494,11 @@ class Similarity(object):
 
             x += 1
 
-        D = truth_mat.tocsr()
+        if self.threshold != 0:
+            D = sparsify(truth_mat.tocsr(), self.threshold)
+        else:
+            D = truth_mat.tocsr()
+        
         del truth_mat, content_a, content_b
         return D
 
@@ -544,8 +571,7 @@ class Compute(object):
 
             main_mat_inv, transpose_matrix_inv = pseduoinverse(self.main_matrix, self.precision)
         else:
-            main_mat_inv, transpose_val1 = pseduoinverse(self.main_matrix,
-                    self.precision)
+            main_mat_inv, transpose_val1 = pseduoinverse(self.main_matrix, self.precision)
             transpose_matrix_inv, transpose_val2 = pseduoinverse(self.transpose_matrix, self.precision)
 
         if type is 'regular':
@@ -757,3 +783,4 @@ class Compute(object):
 
     def __del__(self):
         self.free()
+
