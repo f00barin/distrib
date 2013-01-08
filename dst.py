@@ -607,6 +607,20 @@ class Compute(object):
             fresult = self.fnorm(difference)
             return result, fresult
 
+        elif type is 'identity':
+           # step-by-step multiplication
+            projection_matrix = spmatrixmul(main_mat_inv, transpose_matrix_inv)
+            
+            temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
+            result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+            del temp_matrix
+
+            difference = (result - self.truth_matrix)
+            fresult = self.fnorm(difference)
+
+            return projection_matrix, result, fresult
+
+
     def matrixsvd(self):
         svd_matrix = self.projection_matrix.tocsc()
         svd_dict = {}
