@@ -17,6 +17,28 @@ from pysparse import spmatrix
 
 
 def spmatrixmul(matrix_a, matrix_b):
+    """
+    Sparse Matrix Multiplication using pysparse matrix
+
+    Objective:
+    ----------
+    To multiply two sparse matrices - relatively dense
+
+    Reason:
+    -------
+    Scipy.sparse unfortunately has matrix indices with datatype
+    int32. While pysparse is more robust and more efficient.
+
+    Process:
+    --------
+    It saves the scipy matrices to disk in the standard matrix market
+    format to the disk. Then reads it to a pysparse format and uses
+    Pysparse's inbuilt matrixmultipy operation. The result is
+    converted back to a scipy csr matrix.
+
+    This function takes two scipy matrices as input.
+
+    """
     # write to disk.
     mmwrite('matrix_a.mtx', matrix_a)
     mmwrite('matrix_b.mtx', matrix_b)
@@ -37,6 +59,32 @@ def spmatrixmul(matrix_a, matrix_b):
 
 
 def pseduoinverse(Mat, precision):
+    """
+    Pseudoinverse computation.
+
+    Objective:
+    ----------
+    To compute pseudoinverse using Singular Value Depcomposition
+
+    Reason:
+    -------
+    SVD using Scipy is slow and consumes a lot of memory, similarly
+    pysparse matrix consumes a lot of memory. This is a better
+    alternative to a direct computation of inverse.
+
+    Process:
+    --------
+    The function uses sparsesvd to compute the SVD of a sparse matrix,
+    there is a precision attached in the function, this controls the
+    cutting (or the k) of the SVD. Precision is actually a percentage
+    and uses this to get the k.
+
+        k = (Precision/100) * rows of the matrix.
+
+
+    The function takes a sparse matrix and a precision score as the input.
+
+    """
     matrix = Mat.tocsc()
     k = int((precision * matrix.shape[0]) / 100)
     ut, s, vt = sparsesvd(matrix.tocsc(), k)
@@ -56,6 +104,9 @@ def pseduoinverse(Mat, precision):
 
 
 def sparsify(matrix, value):
+    """
+
+    """
 
     WL = matrix.tolil()
     WL_rows, WL_columns = WL.nonzero()
@@ -148,7 +199,6 @@ class Represent(object):
         del WL, matrix
 
         return W
-
 
     def suffix(self):
 
@@ -354,10 +404,10 @@ class Similarity(object):
     def __init__(self, wordset_a, wordset_b=default, threshold=default):
 
         self.wordset_a = wordset_a
-        
-        if threshold == None:
+
+        if threshold is None:
             self.threshold = 0
-        else: 
+        else:
             self.threshold = threshold
 
         if wordset_b is None:
@@ -384,7 +434,7 @@ class Similarity(object):
                 y += 1
 
             x += 1
-        
+
         if self.threshold != 0:
             D = sparsify(truth_mat.tocsr(), self.threshold)
         else:
@@ -498,7 +548,7 @@ class Similarity(object):
             D = sparsify(truth_mat.tocsr(), self.threshold)
         else:
             D = truth_mat.tocsr()
-        
+
         del truth_mat, content_a, content_b
         return D
 
@@ -620,7 +670,7 @@ class Compute(object):
             temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
             projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
             del temp_matrix
-            
+
             temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
             result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
             del temp_matrix
