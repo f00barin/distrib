@@ -608,13 +608,14 @@ class Compute(object):
             return result, fresult
         elif type is 'identity':
 
-            values = []
-            for i in range(0, self.truth_matrix.shape[0]):
-                values.append(1)
-                i += 1
+#            values = []
+#            for i in range(0, self.truth_matrix.shape[0]):
+#                values.append(1)
+#                i += 1
 
-            identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
-            identity_matrix.setdiag(values)
+#            identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
+#            identity_matrix.setdiag(values)
+            identity_matrix = ss.identity(self.truth_matrix.shape[1]
 
             temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
             projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
