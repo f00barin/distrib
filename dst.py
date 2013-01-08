@@ -606,10 +606,19 @@ class Compute(object):
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
             return result, fresult
-
         elif type is 'identity':
-           # step-by-step multiplication
-            projection_matrix = spmatrixmul(main_mat_inv, transpose_matrix_inv)
+
+            values = []
+            for i in range(0, self.truth_matrix.shape[0]):
+                values.append(1)
+                i += 1
+
+            identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
+            identity_matrix.setdiag(values)
+
+            temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
+            projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
+            del temp_matrix
             
             temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
             result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
