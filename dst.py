@@ -105,7 +105,26 @@ def pseduoinverse(Mat, precision):
 
 def sparsify(matrix, value):
     """
+    Sparsifying matrices
 
+    Objective:
+    ----------
+    To sparsify a matrix.
+
+    Reason:
+    --------
+    Some of the values of the sparse matrices that are used have some
+    redundant values, so most of the redundant values have to be removed.
+    This also makes the sparse matrix less dense. Further, making it easy
+    for the matrix to be used for arithmetic operations.
+
+    Procedure:
+    ---------
+    The function checks for relevant values that are lesser than a threshold
+    and removes the values if it is lesser than the threshold.
+
+    The matrix takes a scipy-sparse matrix and a threshold values as the input
+    and returns a scipy sparse matrix.
     """
 
     WL = matrix.tolil()
@@ -122,12 +141,24 @@ def sparsify(matrix, value):
 
 
 def cfor(first, test, update):
+    """
+    Function that imitates for loop in gnu-c and c++
+
+    Function requires: value to be initilaized, condition and update type.
+    """
     while test(first):
         yield first
         first = update(first)
 
 
 class RemoveCol(object):
+    """
+    Removing columns from the matrix
+
+    Objective:
+    ----------
+    To remove columns from the matrix.
+    """
     def __init__(self, lilmatrix):
         self.lilmatrix = lilmatrix
 
@@ -158,6 +189,34 @@ class RemoveCol(object):
         return self.lilmatrix
 
 
+def splicematrix(matrix_a, matrix_b, value):
+
+    A = matrix_a.tolil()
+    B = matrix_b.tolil()
+    list_sum_a = A.sum(axis=0).tolist()[0]
+    list_sum_b = B.sum(axis=0).tolist()[0]
+    mean = (A.sum(axis=0).mean() + B.sum(axis=0).mean()) / 2
+    splice_value = (mean * value) / 100
+    remcol_a = RemoveCol(A.tolil())
+    remcol_b = RemoveCol(B.tolil())
+    j = 0
+
+    while j < len(list_sum_a) and j < len(list_sum_b):
+        col_sum_a = list_sum_a[j]
+        col_sum_b = list_sum_b[j]
+
+        if col_sum_a < splice_value and col_sum_b < splice_value:
+            remcol_a.removecol(j)
+            remcol_b.removecol(j)
+            list_sum_a.remove(col_sum_a)
+            list_sum_b.remove(col_sum_b)
+
+        else:
+            j += 1
+
+    return A, B.transpose()
+
+
 class Represent(object):
     default = None
 
@@ -175,30 +234,6 @@ class Represent(object):
             self.threshold = kwargs['threshold']
         else:
             self.threshold = 0
-
-    def splicemat(self, matrix, value):
-
-        WL = matrix.tolil()
-        list_sum = WL.sum(axis=0).tolist()[0]
-        mean = WL.sum(axis=0).mean()
-        splice_value = (mean * value) / 100
-        remcol = RemoveCol(WL.tolil())
-        j = 0
-
-        while j < len(list_sum):
-            col_sum = list_sum[j]
-
-            if col_sum < splice_value:
-                remcol.removecol(j)
-                list_sum.remove(col_sum)
-
-            else:
-                j += 1
-
-        W = sk.normalize(WL.tocsr(), norm='l1', axis=1)
-        del WL, matrix
-
-        return W
 
     def suffix(self):
 
@@ -251,14 +286,11 @@ class Represent(object):
 
             x += 1
 
-        if self.splice != 0:
-            W = self.splicemat(M, self.splice)
-
-        else:
-            W = sk.normalize(M.tocsr(), norm='l1', axis=1)
+        W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
             W = sparsify(W, self.threshold)
+
 
         del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
 
@@ -315,11 +347,7 @@ class Represent(object):
 
             x += 1
 
-        if self.splice != 0:
-            W = self.splicemat(M, self.splice)
-
-        else:
-            W = sk.normalize(M.tocsr(), norm='l1', axis=1)
+        W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
             W = sparsify(W, self.threshold)
@@ -380,11 +408,7 @@ class Represent(object):
 
             x += 1
 
-        if self.splice != 0:
-            W = self.splicemat(M, self.splice)
-
-        else:
-            W = sk.normalize(M.tocsr(), norm='l1', axis=1)
+        W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
             W = sparsify(W, self.threshold)
@@ -598,8 +622,20 @@ class Compute(object):
         else:
             self.wordset_b = self.wordset_a
 
+        if 'splice' in kwargs:
+            self.splice = kwargs['splice']
+        else:
+            self.splice = None
+
         if 'result_matrix' in kwargs:
             self.result_matrix = kwargs['result_matrix']
+
+    def splicematrix(self):
+        if self.splice is not None:
+            self.main_matrix, self.transpose_matrix = splicematrix(self.main_matrix, self.transpose_matrix.transpose(), self.splice)
+        else:
+            print 'splice value not provided'
+
 
     def fnorm(self, value):
 
@@ -665,7 +701,7 @@ class Compute(object):
 
 #            identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
 #            identity_matrix.setdiag(values)
-            identity_matrix = ss.identity(self.truth_matrix.shape[1]
+            identity_matrix = ss.identity(self.truth_matrix.shape[1])
 
             temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
             projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
