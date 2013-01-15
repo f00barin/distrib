@@ -86,19 +86,39 @@ def pseduoinverse(Mat, precision):
 
     """
     matrix = Mat.tocsc()
-    k = int((precision * matrix.shape[0]) / 100)
-    ut, s, vt = sparsesvd(matrix.tocsc(), k)
-    UT = ss.csr_matrix(ut)
-    SI = ss.csr_matrix(np.diag(1 / s))
-    VT = ss.csr_matrix(vt)
+    if matrix.shape[0] <= matrix.shape[1]:
 
-    temp_matrix = spmatrixmul(VT.transpose(), SI)
-    pinv_matrix = spmatrixmul(temp_matrix, UT)
-    del temp_matrix
+        k = int((precision * matrix.shape[0]) / 100)
+        ut, s, vt = sparsesvd(matrix.tocsc(), k)
+        UT = ss.csr_matrix(ut)
+        SI = ss.csr_matrix(np.diag(1 / s))
+        VT = ss.csr_matrix(vt)
 
-    temp_matrix = spmatrixmul(UT.transpose(), SI)
-    pinv_matrix_t = spmatrixmul(temp_matrix, VT)
-    del ut, s, vt, UT, SI, VT, temp_matrix
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
+        del ut, s, vt, UT, SI, VT, temp_matrix
+
+    else:
+
+        k = int((precision * matrix.transpose().shape[0]) / 100)
+        ut, s, vt = sparsesvd(matrix.transpose().tocsc(), k)
+        UT = ss.csr_matrix(ut)
+        SI = ss.csr_matrix(np.diag(1 / s))
+        VT = ss.csr_matrix(vt)
+
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        del ut, s, vt, UT, SI, VT, temp_matrix
+
+        
 
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
