@@ -14,7 +14,7 @@ from sparsesvd import sparsesvd
 from bisect import bisect_left
 from scipy.io import mmwrite
 from pysparse import spmatrix
-
+import scipy.sparse.linalg as ssl
 
 def spmatrixmul(matrix_a, matrix_b):
     """
@@ -58,7 +58,7 @@ def spmatrixmul(matrix_a, matrix_b):
     return result
 
 
-def pseduoinverse(Mat, precision):
+def pseudoinverse(Mat, precision):
     """
     Pseudoinverse computation.
 
@@ -119,6 +119,74 @@ def pseduoinverse(Mat, precision):
         del ut, s, vt, UT, SI, VT, temp_matrix
 
         
+
+    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+
+
+
+def sci_pseudoinverse(Mat, precision):
+    """
+    Pseudoinverse computation.
+
+    Objective:
+    ----------
+    To compute pseudoinverse using Singular Value Depcomposition
+
+    Reason:
+    -------
+    SVD using Scipy is slow and consumes a lot of memory, similarly
+    pysparse matrix consumes a lot of memory. This is a better
+    alternative to a direct computation of inverse.
+
+    Process:
+    --------
+    The function uses sparsesvd to compute the SVD of a sparse matrix,
+    there is a precision attached in the function, this controls the
+    cutting (or the k) of the SVD. Precision is actually a percentage
+    and uses this to get the k.
+
+        k = (Precision/100) * rows of the matrix.
+
+
+    The function takes a sparse matrix and a precision score as the input.
+
+    """
+    matrix = Mat.tocsc()
+    print matrix.shape
+    if matrix.shape[0] <= matrix.shape[1]:
+        print 'here'
+        val = int((precision * matrix.shape[0]) / 100)
+        u, s, vt = ssl.svds(matrix.tocsc(), k=val)
+        UT = ss.csr_matrix(np.nan_to_num(u.transpose()))
+        SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
+        VT = ss.csr_matrix(np.nan_to_num(vt))
+
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
+        del u, s, vt, UT, SI, VT, temp_matrix
+
+    else:
+        print 'there'
+        val = int((precision * matrix.transpose().shape[0]) / 100)
+        u, s, vt = ssl.svds(matrix.transpose().tocsc(), k=val)
+        UT = ss.csr_matrix(np.nan_to_num(u.transpose()))
+        SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
+        VT = ss.csr_matrix(np.nan_to_num(vt))
+
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        del u, s, vt, UT, SI, VT, temp_matrix
+
+        
+    print pinv_matrix.shape, pinv_matrix_t.shape
 
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
@@ -209,32 +277,39 @@ class RemoveCol(object):
         return self.lilmatrix
 
 
-def splicematrix(matrix_a, matrix_b, value):
+def splicematrix(matrix_a, matrix_b, matrix_c, value):
 
     A = matrix_a.tolil()
     B = matrix_b.tolil()
+    C = matrix_c.tolil()
     list_sum_a = A.sum(axis=0).tolist()[0]
     list_sum_b = B.sum(axis=0).tolist()[0]
-    mean = (A.sum(axis=0).mean() + B.sum(axis=0).mean()) / 2
+    list_sum_c = C.sum(axis=0).tolist()[0]
+    mean = int ((A.sum(axis=0).mean() + B.sum(axis=0).mean() +
+        C.sum(axis=0).mean()) / 3)
     splice_value = (mean * value) / 100
     remcol_a = RemoveCol(A.tolil())
     remcol_b = RemoveCol(B.tolil())
+    remcol_c = RemoveCol(C.tolil())
     j = 0
 
-    while j < len(list_sum_a) and j < len(list_sum_b):
+    while j < len(list_sum_a) and j < len(list_sum_b) and j < len(list_sum_c): 
         col_sum_a = list_sum_a[j]
         col_sum_b = list_sum_b[j]
+        col_sum_c = list_sum_c[j]
 
-        if col_sum_a < splice_value and col_sum_b < splice_value:
+        if col_sum_a <= splice_value and col_sum_b <= splice_value and col_sum_c <= splice_value:
             remcol_a.removecol(j)
             remcol_b.removecol(j)
+            remcol_c.removecol(j)
             list_sum_a.remove(col_sum_a)
             list_sum_b.remove(col_sum_b)
+            list_sum_c.remove(col_sum_c)
 
         else:
             j += 1
 
-    return A, B.transpose()
+    return A, B, C
 
 
 class Represent(object):
@@ -244,11 +319,6 @@ class Represent(object):
 
         self.source = source
         self.target = target
-
-        if 'splice' in kwargs:
-            self.splice = kwargs['splice']
-        else:
-            self.splice = 0
 
         if 'threshold' in kwargs:
             self.threshold = kwargs['threshold']
@@ -642,20 +712,13 @@ class Compute(object):
         else:
             self.wordset_b = self.wordset_a
 
-        if 'splice' in kwargs:
-            self.splice = kwargs['splice']
-        else:
-            self.splice = None
-
         if 'result_matrix' in kwargs:
             self.result_matrix = kwargs['result_matrix']
-
-    def splicematrix(self):
-        if self.splice is not None:
-            self.main_matrix, self.transpose_matrix = splicematrix(self.main_matrix, self.transpose_matrix.transpose(), self.splice)
+        
+        if 'svd' in kwargs:
+            self.svd = 'set'
         else:
-            print 'splice value not provided'
-
+            self.svd = 'unset'
 
     def fnorm(self, value):
 
@@ -673,12 +736,23 @@ class Compute(object):
 
     def matcal(self, type):
 
-        if self.are_equal is 'set':
+        if self.svd is 'set':
 
-            main_mat_inv, transpose_matrix_inv = pseduoinverse(self.main_matrix, self.precision)
+            if self.are_equal is 'set':
+
+                main_mat_inv, transpose_matrix_inv = sci_pseudoinverse(self.main_matrix, self.precision)
+
+            else:
+
+                main_mat_inv, transpose_val1 = sci_pseudoinverse(self.main_matrix, self.precision)
+                transpose_matrix_inv, transpose_val2 = sci_pseudoinverse(self.transpose_matrix, self.precision)
         else:
-            main_mat_inv, transpose_val1 = pseduoinverse(self.main_matrix, self.precision)
-            transpose_matrix_inv, transpose_val2 = pseduoinverse(self.transpose_matrix, self.precision)
+
+            if self.are_equal is 'set':
+                main_mat_inv, transpose_matrix_inv = pseudoinverse(self.main_matrix, self.precision)
+            else:
+                main_mat_inv, transpose_val1 = pseudoinverse(self.main_matrix, self.precision)
+                transpose_matrix_inv, transpose_val2 = pseudoinverse(self.transpose_matrix, self.precision)
 
         if type is 'regular':
            # step-by-step multiplication
@@ -735,14 +809,24 @@ class Compute(object):
             fresult = self.fnorm(difference)
 
             return projection_matrix, result, fresult
-
-
     def matrixsvd(self):
         svd_matrix = self.projection_matrix.tocsc()
         svd_dict = {}
         result_list = []
-        (U, S, VT) = sparsesvd(svd_matrix.tocsc(),
+
+        if self.svd is 'set':
+            print 'there'
+            Utemp, Stemp, VTtemp = ssl.svds(svd_matrix.tocsc(),
+                    (int (self.projection_matrix.tocsr().shape[0] * 75)/100))
+
+            U = np.nan_to_num(Utemp.transpose())
+            S = np.nan_to_num(Stemp)
+            VT = np.nan_to_num(VTtemp)
+        else:
+            print 'here'
+            (U, S, VT) = sparsesvd(svd_matrix.tocsc(),
                 (self.projection_matrix.tocsr().shape[0]))
+
         rank = U.shape[0]
 
         for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
