@@ -118,8 +118,6 @@ def pseudoinverse(Mat, precision):
         pinv_matrix = spmatrixmul(temp_matrix, VT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
-        
-
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
 
@@ -127,27 +125,7 @@ def pseudoinverse(Mat, precision):
 def sci_pseudoinverse(Mat, precision):
     """
     Pseudoinverse computation.
-
-    Objective:
-    ----------
-    To compute pseudoinverse using Singular Value Depcomposition
-
-    Reason:
-    -------
-    SVD using Scipy is slow and consumes a lot of memory, similarly
-    pysparse matrix consumes a lot of memory. This is a better
-    alternative to a direct computation of inverse.
-
-    Process:
-    --------
-    The function uses sparsesvd to compute the SVD of a sparse matrix,
-    there is a precision attached in the function, this controls the
-    cutting (or the k) of the SVD. Precision is actually a percentage
-    and uses this to get the k.
-
-        k = (Precision/100) * rows of the matrix.
-
-
+    pseudoinverse using scipy.
     The function takes a sparse matrix and a precision score as the input.
 
     """
@@ -185,7 +163,7 @@ def sci_pseudoinverse(Mat, precision):
         pinv_matrix = spmatrixmul(temp_matrix, VT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
-        
+
     print pinv_matrix.shape, pinv_matrix_t.shape
 
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
@@ -293,7 +271,7 @@ def splicematrix(matrix_a, matrix_b, matrix_c, value):
     remcol_c = RemoveCol(C.tolil())
     j = 0
 
-    while j < len(list_sum_a) and j < len(list_sum_b) and j < len(list_sum_c): 
+    while j < len(list_sum_a) and j < len(list_sum_b) and j < len(list_sum_c):
         col_sum_a = list_sum_a[j]
         col_sum_b = list_sum_b[j]
         col_sum_c = list_sum_c[j]
@@ -714,7 +692,7 @@ class Compute(object):
 
         if 'result_matrix' in kwargs:
             self.result_matrix = kwargs['result_matrix']
-        
+
         if 'svd' in kwargs:
             self.svd = 'set'
         else:
@@ -809,6 +787,7 @@ class Compute(object):
             fresult = self.fnorm(difference)
 
             return projection_matrix, result, fresult
+
     def matrixsvd(self):
         svd_matrix = self.projection_matrix.tocsc()
         svd_dict = {}
