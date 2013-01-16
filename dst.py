@@ -817,7 +817,7 @@ class Compute(object):
         if self.svd is 'set':
             print 'there'
             Utemp, Stemp, VTtemp = ssl.svds(svd_matrix.tocsc(),
-                    (int (self.projection_matrix.tocsr().shape[0] * 75)/100))
+                    k=(int (self.projection_matrix.tocsr().shape[0] * 75)/100))
 
             U = np.nan_to_num(Utemp.transpose())
             S = np.nan_to_num(Stemp)
