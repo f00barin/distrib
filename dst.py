@@ -16,6 +16,9 @@ from scipy.io import mmwrite
 from pysparse import spmatrix
 import scipy.sparse.linalg as ssl
 
+
+any_in = lambda a, b: any(i in b for i in a)
+
 def spmatrixmul(matrix_a, matrix_b):
     """
     Sparse Matrix Multiplication using pysparse matrix
@@ -291,12 +294,18 @@ def splicematrix(matrix_a, matrix_b, matrix_c, value):
 
 
 class Represent(object):
+
     default = None
 
     def __init__(self, source, target, **kwargs):
 
         self.source = source
         self.target = target
+        
+        if 'total_prefsuffs' in kwargs:
+            self.total_prefsuffs = kwargs['total_prefsuffs']
+        else:
+            self.total_prefsuffs = 0
 
         if 'threshold' in kwargs:
             self.threshold = kwargs['threshold']
@@ -427,9 +436,8 @@ class Represent(object):
     def prefsuff(self):
 
         tri_freq = Counter()
-        hashpref = defaultdict(list)
-        scorepref = defaultdict(list)
-        reversehash = defaultdict(list)
+        revhash = defaultdict(list)
+        content = [word.strip() for word in open(self.target)]
 
         for line in fileinput.input(self.source):
             punctuation = re.compile(r'[-.?!,":;()|0-9]')
@@ -444,23 +452,55 @@ class Represent(object):
 
         fileinput.close()
 
-        combo = list(tri_freq.elements())
 
-        for i in combo:
+        for i in list(tri_freq.elements()):
+            word = i.split(r'-')[1]
+            prefsuff = i.split(r'-')[0]
+
+            if word not in revhash[prefsuff]:
+                revhash[prefsuff].append(word)
+
+        removable = (len(revhash.keys()) - self.total_prefsuffs)
+        sorted_reversehash = sorted(revhash.iteritems(), key=lambda x:
+                len(x[1]), reverse=True)
+        temp_val = 0
+        while temp_val < removable:
+            popped = sorted_reversehash.pop()
+            rem = popped[0]+'-*'
+            if any_in(popped[1], content) is False:
+                
+                poplist = filter(lambda name: re.match(rem, name),
+                        tri_freq.iterkeys())
+
+                for pop_element in poplist:
+                    tri_freq.pop(pop_element)
+
+            temp_val += 1
+
+        return tri_freq
+
+    def represent_ps(self, trifreq):
+
+        hashpref = defaultdict(list)
+        scorepref = defaultdict(list)
+        reversehash = defaultdict(list)
+
+        content = [word.strip() for word in open(self.target)]
+
+        for i in list(trifreq.elements()):
             word = i.split(r'-')[1]
             prefsuff = i.split(r'-')[0]
 
             if prefsuff not in hashpref[word]:
                 hashpref[word].append(prefsuff)
-                scorepref[word].append(tri_freq[i])
+                scorepref[word].append(trifreq[i])
 
             if word not in reversehash[prefsuff]:
                 reversehash[prefsuff].append(word)
 
-        content = [word.strip() for word in open(self.target)]
         M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
         x = 0
-
+        
         for i in content:
             y = 0
 
@@ -480,8 +520,6 @@ class Represent(object):
 
         if self.threshold != 0:
             W = sparsify(W, self.threshold)
-
-        del hashpref, scorepref, reversehash, tri_freq, tri_tokens, M, content
 
         return W.tocsr()
 
