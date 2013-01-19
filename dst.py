@@ -326,7 +326,7 @@ class Represent(object):
             bi_tokens = bigrams(tokens)
 
             for bi_token in bi_tokens:
-                bi_tok = bi_token[1] + "-" + bi_token[0]
+                bi_tok = bi_token[1] + ':1:' + bi_token[0]
                 bi_freq[bi_tok] += 1
 
         fileinput.close()
@@ -334,8 +334,8 @@ class Represent(object):
         combo = list(bi_freq.elements())
 
         for i in combo:
-            word = i.split(r'-')[1]
-            suffix = i.split(r'-')[0]
+            word = i.split(r':1:')[1]
+            suffix = i.split(r':1:')[0]
 
             if suffix not in hashpref[word]:
                 hashpref[word].append(suffix)
@@ -387,7 +387,7 @@ class Represent(object):
             bi_tokens = bigrams(tokens)
 
             for bi_token in bi_tokens:
-                bi_tok = bi_token[0] + "-" + bi_token[1]
+                bi_tok = bi_token[0] + ':1:' + bi_token[1]
                 bi_freq[bi_tok] += 1
 
         fileinput.close()
@@ -395,8 +395,8 @@ class Represent(object):
         combo = list(bi_freq.elements())
 
         for i in combo:
-            word = i.split(r'-')[1]
-            prefix = i.split(r'-')[0]
+            word = i.split(r':1:')[1]
+            prefix = i.split(r':1:')[0]
 
             if prefix not in hashpref[word]:
                 hashpref[word].append(prefix)
@@ -448,15 +448,15 @@ class Represent(object):
             for tri_token in tri_tokens:
                 if any_in(tri_token[1], content) is True:
                     pref_suff = tri_token[0] + "," + tri_token[2]
-                    tri_tok = pref_suff + "-" + tri_token[1]
+                    tri_tok = pref_suff + ':1:' + tri_token[1]
                     tri_freq[tri_tok] += 1
 
         fileinput.close()
 
 
         for i in list(tri_freq.elements()):
-            word = i.split(r'-')[1]
-            prefsuff = i.split(r'-')[0]
+            word = i.split(r':1:')[1]
+            prefsuff = i.split(r':1:')[0]
 
             if word not in revhash[prefsuff]:
                 revhash[prefsuff].append(word)
@@ -466,15 +466,17 @@ class Represent(object):
 
         temp_val = 0
 
-        while temp_val < removable:
-            popped = sorted_reversehash.pop()
-            rem = popped[0]+'-*'
-            poplist = filter(lambda name: re.match(rem, name),
-                    tri_freq.iterkeys())
-            for pop_element in poplist:
-                tri_freq.pop(pop_element)
+        if removable != len(revhash.keys()):
+            
+            while temp_val < removable:
+                popped = sorted_reversehash.pop()
+                rem = popped[0]+':1:*'
+                poplist = filter(lambda name: re.match(rem, name),
+                        tri_freq.iterkeys())
+                for pop_element in poplist:
+                    tri_freq.pop(pop_element)
 
-            temp_val += 1
+                temp_val += 1
 
         return tri_freq
 
@@ -487,8 +489,8 @@ class Represent(object):
         content = [word.strip() for word in open(self.target)]
 
         for i in list(trifreq.elements()):
-            word = i.split(r'-')[1]
-            prefsuff = i.split(r'-')[0]
+            word = i.split(r':1:')[1]
+            prefsuff = i.split(r':1:')[0]
 
             if prefsuff not in hashpref[word]:
                 hashpref[word].append(prefsuff)
@@ -504,9 +506,10 @@ class Represent(object):
             y = 0
 
             for j in reversehash.keys():
-
+                
                 if i in reversehash[j]:
-                    value = hashpref[i].index(j)
+                    pos = hashpref[i].index(j)
+                    value = scorepref[i][pos]
                 else:
                     value = 0
 
