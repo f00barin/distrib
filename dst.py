@@ -446,9 +446,10 @@ class Represent(object):
             tri_tokens = trigrams(tokens)
 
             for tri_token in tri_tokens:
-                pref_suff = tri_token[0] + "," + tri_token[2]
-                tri_tok = pref_suff + "-" + tri_token[1]
-                tri_freq[tri_tok] += 1
+                if any_in(tri_token[1], content) is True:
+                    pref_suff = tri_token[0] + "," + tri_token[2]
+                    tri_tok = pref_suff + "-" + tri_token[1]
+                    tri_freq[tri_tok] += 1
 
         fileinput.close()
 
@@ -461,19 +462,17 @@ class Represent(object):
                 revhash[prefsuff].append(word)
 
         removable = (len(revhash.keys()) - self.total_prefsuffs)
-        sorted_reversehash = sorted(revhash.iteritems(), key=lambda x:
-                len(x[1]), reverse=True)
+        sorted_reversehash = sorted(revhash.iteritems(), key=lambda x: len(x[1]), reverse=True)
+
         temp_val = 0
+
         while temp_val < removable:
             popped = sorted_reversehash.pop()
             rem = popped[0]+'-*'
-            if any_in(popped[1], content) is False:
-                
-                poplist = filter(lambda name: re.match(rem, name),
-                        tri_freq.iterkeys())
-
-                for pop_element in poplist:
-                    tri_freq.pop(pop_element)
+            poplist = filter(lambda name: re.match(rem, name),
+                    tri_freq.iterkeys())
+            for pop_element in poplist:
+                tri_freq.pop(pop_element)
 
             temp_val += 1
 
