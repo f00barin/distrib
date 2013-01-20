@@ -1,15 +1,13 @@
 #!/usr/bin/python
-
 import fileinput
 import re
 from os import remove as rm
 from nltk import trigrams, bigrams
 from nltk.corpus import wordnet, wordnet_ic
-from recipy import Counter
 import numpy as np
 import sklearn.preprocessing as sk
 import scipy.sparse as ss
-from collections import defaultdict, OrderedDict
+from collections import defaultdict, OrderedDict, Counter
 from sparsesvd import sparsesvd
 from bisect import bisect_left
 from scipy.io import mmwrite
@@ -805,20 +803,10 @@ class Compute(object):
             fresult = self.fnorm(difference)
             return result, fresult
         elif type is 'identity':
-
-#            values = []
-#            for i in range(0, self.truth_matrix.shape[0]):
-#                values.append(1)
-#                i += 1
-
-#            identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
-#            identity_matrix.setdiag(values)
-            identity_matrix = ss.identity(self.truth_matrix.shape[1])
-
-            temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
-            projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
-            del temp_matrix
-
+        
+            projection_matrix = ss.identity(self.main_matrix.shape[1],
+                    dtype=np.float64, format='csr')
+            
             temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
             result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
             del temp_matrix
