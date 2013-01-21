@@ -129,9 +129,7 @@ def sci_pseudoinverse(Mat, precision):
 
     """
     matrix = Mat.tocsc()
-    print matrix.shape
     if matrix.shape[0] <= matrix.shape[1]:
-        print 'here'
         val = int((precision * matrix.shape[0]) / 100)
         u, s, vt = ssl.svds(matrix.tocsc(), k=val)
         UT = ss.csr_matrix(np.nan_to_num(u.transpose()))
@@ -147,7 +145,6 @@ def sci_pseudoinverse(Mat, precision):
         del u, s, vt, UT, SI, VT, temp_matrix
 
     else:
-        print 'there'
         val = int((precision * matrix.transpose().shape[0]) / 100)
         u, s, vt = ssl.svds(matrix.transpose().tocsc(), k=val)
         UT = ss.csr_matrix(np.nan_to_num(u.transpose()))
@@ -163,7 +160,6 @@ def sci_pseudoinverse(Mat, precision):
         del u, s, vt, UT, SI, VT, temp_matrix
 
 
-    print pinv_matrix.shape, pinv_matrix_t.shape
 
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
@@ -820,7 +816,6 @@ class Compute(object):
         result_list = []
 
         if self.svd is 'set':
-            print 'there'
             Utemp, Stemp, VTtemp = ssl.svds(svd_matrix.tocsc(),
                     k=(int (self.projection_matrix.tocsr().shape[0] * 75)/100))
 
@@ -828,7 +823,6 @@ class Compute(object):
             S = np.nan_to_num(Stemp)
             VT = np.nan_to_num(VTtemp)
         else:
-            print 'here'
             (U, S, VT) = sparsesvd(svd_matrix.tocsc(),
                 (self.projection_matrix.tocsr().shape[0]))
 
