@@ -15,8 +15,6 @@ from pysparse import spmatrix
 import scipy.sparse.linalg as ssl
 
 
-any_in = lambda a, b: any(i in b for i in a)
-
 def spmatrixmul(matrix_a, matrix_b):
     """
     Sparse Matrix Multiplication using pysparse matrix
@@ -435,7 +433,7 @@ class Represent(object):
 
         tri_freq = Counter()
         revhash = defaultdict(list)
-        content = [word.strip() for word in open(self.target)]
+        content = set(word.strip() for word in open(self.target))
 
         for line in fileinput.input(self.source):
             punctuation = re.compile(r'[-.?!,":;()|0-9]')
@@ -444,7 +442,7 @@ class Represent(object):
             tri_tokens = trigrams(tokens)
 
             for tri_token in tri_tokens:
-                if any_in(tri_token[1], content) is True:
+                if tri_token[1] in content:
                     pref_suff = tri_token[0] + "," + tri_token[2]
                     tri_tok = pref_suff + ':1:' + tri_token[1]
                     tri_freq[tri_tok] += 1
