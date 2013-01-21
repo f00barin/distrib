@@ -435,13 +435,18 @@ class Represent(object):
             punctuation = re.compile(r'[-.?!,":;()|0-9]')
             line = punctuation.sub("", line.lower())
             tokens = re.findall(r'\w+', line, flags=re.UNICODE | re.LOCALE)
-            tri_tokens = trigrams(tokens)
-
-            for tri_token in tri_tokens:
-                if tri_token[1] in content:
-                    pref_suff = tri_token[0] + "," + tri_token[2]
-                    tri_tok = pref_suff + ':1:' + tri_token[1]
-                    tri_freq[tri_tok] += 1
+            tokens_set = set(tokens)
+            intersection = content.intersection(tokens_set)
+            if not intersection:
+                continue
+            else:
+                tri_tokens = trigrams(tokens)
+                for tri_token in tri_tokens:
+                    if tri_token[1] in content:
+                        pref_suff = tri_token[0] + "," + tri_token[2]
+                        tri_tok = pref_suff + ':1:' + tri_token[1]
+                        tri_freq[tri_tok] += 1
+                        
 
         fileinput.close()
 
