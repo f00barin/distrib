@@ -249,18 +249,27 @@ class RemoveCol(object):
         del rows, data, i, j
         return self.lilmatrix
 
+def splicematrix(matrix_a, matrix_b, matrix_c, value): 
 
-def splicematrix(matrix_a, matrix_b, matrix_c, value):
+    ''' the matrix_a should be the WT or it should contain all the rows with
+    maximum row elements for maximum profit :P
+    '''
+    retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
+
+    return matrix_a.tocsc()[:,retain_array].tocsr(), matrix_b.tocsc()[:,retain_array].tocsr(), matrix_c.tocsc()[:,retain_array].tocsr()
+
+    
+
+ 
+
+
+def old_splicematrix(matrix_a, matrix_b, matrix_c, value):
 
     A = matrix_a.tolil()
     B = matrix_b.tolil()
     C = matrix_c.tolil()
-    list_sum_a = A.sum(axis=0).tolist()[0]
-    list_sum_b = B.sum(axis=0).tolist()[0]
-    list_sum_c = C.sum(axis=0).tolist()[0]
-    mean = int ((A.sum(axis=0).mean() + B.sum(axis=0).mean() +
-        C.sum(axis=0).mean()) / 3)
-    splice_value = (mean * value) / 100
+    listx = A.sum(axis=0).argsort().tolist()[0]
+    
     remcol_a = RemoveCol(A.tolil())
     remcol_b = RemoveCol(B.tolil())
     remcol_c = RemoveCol(C.tolil())
@@ -428,7 +437,6 @@ class Represent(object):
     def prefsuff(self):
 
         tri_freq = Counter()
-        revhash = defaultdict(list)
         content = set(word.strip() for word in open(self.target))
 
         for line in fileinput.input(self.source):
@@ -449,7 +457,11 @@ class Represent(object):
                         
 
         fileinput.close()
+        return tri_freq
 
+    def oldremovex(self,tri_freq):
+
+        revhash = defaultdict(list)
 
         for i in list(tri_freq.elements()):
             word = i.split(r':1:')[1]
@@ -548,7 +560,7 @@ class Similarity(object):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        truth_mat = np.zeros(shape=(len(content_a), len(content_b)))
         x = 0
 
         for i in content_a:
@@ -563,14 +575,16 @@ class Similarity(object):
                 y += 1
 
             x += 1
-
-        if self.threshold != 0:
-            D = sparsify(truth_mat.tocsr(), self.threshold)
-        else:
-            D = truth_mat.tocsr()
-
-        del truth_mat, content_a, content_b
-        return D
+        
+        return truth_mat
+                
+#        if self.threshold != 0:
+#            D = sparsify(truth_mat.tocsr(), self.threshold)
+#        else:
+#            D = truth_mat.tocsr()
+#
+#        del truth_mat, content_a, content_b
+#        return D
 
     def lch(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
