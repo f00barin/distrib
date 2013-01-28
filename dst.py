@@ -13,7 +13,7 @@ from bisect import bisect_left
 from scipy.io import mmwrite
 from pysparse import spmatrix
 import scipy.sparse.linalg as ssl
-
+import h5py
 
 def spmatrixmul(matrix_a, matrix_b):
     """
@@ -55,6 +55,60 @@ def spmatrixmul(matrix_a, matrix_b):
     del sp_result, sp_matrix_a, sp_matrix_b, matrix_a, matrix_b
 
     return result
+
+class Get_truth(object):
+
+    def __init__(self, **kwargs):
+        self.hdf5file = kwargs['file']
+        self.rows = kwargs['rows']
+        self.sparsity = kwargs['sparsity']
+        self.trows = kwargs['trows']
+        self.name = kwargs['name']
+    
+    def sparsout(self, matrix):
+        for i in range(matrix.shape[0]):
+            remval = ((matrix.sum(axis=1)[i] / matrix.shape[1])[0,0] * self.sparsity)/100
+            remlist = (np.where(matrix[i] <= remval))[1].tolist()[0]
+            for x in remlist:
+                matrix[i,x] = 0
+
+        return matrix
+    
+    def convert(self, matrix):
+        
+        psp_mat = spmatrix.ll_mat(matrix.shape[0], matrix.shape[1])
+        
+        for i in range(matrix.shape[0]):
+            for j in range(matrix.shape[1]):
+                if matrix[i,j]:
+                    psp_mat[i,j] = matrix[i,j]
+
+        
+        data, row, col = psp_mat.find()
+        csrmat = ss.csr_matrix((data, (row, col)), shape=psp_mat.shape)
+
+        return csrmat
+
+
+    def get_truth(self):
+        
+        f = h5py.File(self.hdf5file, 'r')
+        dataset = f[self.name]
+        temp = np.empty(dataset.shape, dataset.dtype)
+        dataset.read_direct(temp)
+        
+        truthmat = np.matrix(temp)
+        
+        total_col = (truthmat.shape[1] - self.trows) 
+        trowstop = (truthmat.shape[0] - self.trows)
+
+        temp_truth = truthmat[0:self.rows, 0:total_col]
+        temp_test = truthmat[trowstop:truthmat.shape[1], 0:total_col]
+
+        np_truth = self.sparsout(temp_truth)
+        np_test = self.sparsout(temp_test)
+
+        return self.convert(np_truth), self.convert(np_test)
 
 
 def pseudoinverse(Mat, precision):
