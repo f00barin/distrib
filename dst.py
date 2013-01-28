@@ -288,12 +288,12 @@ class RemoveCol(object):
         data = self.lilmatrix.data
         for i in xrange(self.lilmatrix.shape[0]):
             pos = bisect_left(rows[i], j)
-            if pos == len(rows[i]):
+            if pos is len(rows[i]):
                 continue
-            elif rows[i][pos] == j:
+            elif rows[i][pos] is j:
                 rows[i].pop(pos)
                 data[i].pop(pos)
-                if pos == len(rows[i]):
+                if pos is len(rows[i]):
                     continue
             for pos2 in xrange(pos, len(rows[i])):
                 rows[i][pos2] -= 1
@@ -310,7 +310,7 @@ def splicematrix(matrix_a, matrix_b, matrix_c, value):
     '''
     retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
 
-    return matrix_a.tocsc()[:,retain_array].tocsr(), matrix_b.tocsc()[:,retain_array].tocsr(), matrix_c.tocsc()[:,retain_array].tocsr()
+    return sk.normalize(matrix_a.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1), sk.normalize(matrix_b.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1), sk.normalize(matrix_c.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1)
 
     
 
@@ -555,12 +555,13 @@ class Represent(object):
             word = i.split(r':1:')[1]
             prefsuff = i.split(r':1:')[0]
 
-            if prefsuff not in hashpref[word]:
+            if prefsuff not in set(hashpref[word]):
                 hashpref[word].append(prefsuff)
                 scorepref[word].append(trifreq[i])
 
-            if word not in reversehash[prefsuff]:
+            if word not in set(reversehash[prefsuff]):
                 reversehash[prefsuff].append(word)
+        print 'done with getting the hashpref and scorepref'
 
         M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
         x = 0
@@ -570,23 +571,23 @@ class Represent(object):
 
             for j in reversehash.keys():
                 
-                if i in reversehash[j]:
+                if i in set(reversehash[j]):
                     pos = hashpref[i].index(j)
                     value = scorepref[i][pos]
                 else:
                     value = 0
+                if value:
+                    M[x, y] = value
 
-                M[x, y] = value
                 y += 1
 
             x += 1
 
-        W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
         if self.threshold != 0:
-            W = sparsify(W, self.threshold)
+            M = sparsify(M.tocsr(), self.threshold)
 
-        return W.tocsr()
+        return M.tocsr()
 
     def __del__(self):
         self.free()
