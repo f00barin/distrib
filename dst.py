@@ -218,41 +218,6 @@ def sci_pseudoinverse(Mat, precision):
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
 
 
-def sparsify(matrix, value):
-    """
-    Sparsifying matrices
-
-    Objective:
-    ----------
-    To sparsify a matrix.
-
-    Reason:
-    --------
-    Some of the values of the sparse matrices that are used have some
-    redundant values, so most of the redundant values have to be removed.
-    This also makes the sparse matrix less dense. Further, making it easy
-    for the matrix to be used for arithmetic operations.
-
-    Procedure:
-    ---------
-    The function checks for relevant values that are lesser than a threshold
-    and removes the values if it is lesser than the threshold.
-
-    The matrix takes a scipy-sparse matrix and a threshold values as the input
-    and returns a scipy sparse matrix.
-    """
-
-    WL = matrix.tolil()
-    WL_rows, WL_columns = WL.nonzero()
-    avg = (float(sum(matrix.data)) / float(len(matrix.data)))
-    t_value = (avg * value) / 100
-
-    for i in range(0, len(WL_rows)):
-
-        if WL[(WL_rows[i]), (WL_columns[i])] < t_value:
-            WL[(WL_rows[i]), (WL_columns[i])] = 0
-
-    return WL
 
 
 def cfor(first, test, update):
@@ -420,9 +385,6 @@ class Represent(object):
 
         W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
-        if self.threshold != 0:
-            W = sparsify(W, self.threshold)
-
 
         del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
 
@@ -481,8 +443,6 @@ class Represent(object):
 
         W = sk.normalize(M.tocsr(), norm='l1', axis=1)
 
-        if self.threshold != 0:
-            W = sparsify(W, self.threshold)
 
         del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
 
@@ -499,9 +459,8 @@ class Represent(object):
             tokens = re.findall(r'\w+', line, flags=re.UNICODE | re.LOCALE)
             tokens_set = set(tokens)
             intersection = content.intersection(tokens_set)
-            if not intersection:
-                continue
-            else:
+
+            if intersection:
                 tri_tokens = trigrams(tokens)
                 for tri_token in tri_tokens:
                     if tri_token[1] in content:
@@ -552,28 +511,29 @@ class Represent(object):
         content = [word.strip() for word in open(self.target)]
 
         for i in list(trifreq.elements()):
-            word = i.split(r':1:')[1]
-            prefsuff = i.split(r':1:')[0]
+            (prefsuff, word) = i.split(r':1:')
 
-            if prefsuff not in set(hashpref[word]):
+            if prefsuff not in hashpref[word]:
                 hashpref[word].append(prefsuff)
                 scorepref[word].append(trifreq[i])
 
-            if word not in set(reversehash[prefsuff]):
+            if word not in reversehash[prefsuff]:
                 reversehash[prefsuff].append(word)
         print 'done with getting the hashpref and scorepref'
 
         M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
         x = 0
+
+        conditemlist = reversehash.items()
         
-        for i in content:
+        for fword in content:
             y = 0
 
-            for j in reversehash.keys():
+            for key, ilist in conditemlist:
                 
-                if i in set(reversehash[j]):
-                    pos = hashpref[i].index(j)
-                    value = scorepref[i][pos]
+                if fword in ilist:
+                    pos = hashpref[fword].index(key)
+                    value = scorepref[fword][pos]
                 else:
                     value = 0
                 if value:
@@ -584,8 +544,6 @@ class Represent(object):
             x += 1
 
 
-        if self.threshold != 0:
-            M = sparsify(M.tocsr(), self.threshold)
 
         return M.tocsr()
 
@@ -633,10 +591,6 @@ class Similarity(object):
         
         return truth_mat
                 
-#        if self.threshold != 0:
-#            D = sparsify(truth_mat.tocsr(), self.threshold)
-#        else:
-#            D = truth_mat.tocsr()
 #
 #        del truth_mat, content_a, content_b
 #        return D
@@ -645,8 +599,9 @@ class Similarity(object):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        truth_mat = np.zeros(shape=(len(content_a), len(content_b)))
         x = 0
+
         for i in content_a:
             y = 0
             synA = wordnet.synset(i + ".n.01")
@@ -660,19 +615,15 @@ class Similarity(object):
 
             x += 1
 
-        if self.threshold != 0:
-            D = sparsify(truth_mat.tocsr(), self.threshold)
-        else:
-            D = truth_mat.tocsr()
 
-        del truth_mat, content_a, content_b
-        return D
+        return truth_mat
 
     def wup(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        truth_mat = np.zeros(shape=(len(content_a), len(content_b)))
+
         x = 0
         for i in content_a:
             y = 0
@@ -685,21 +636,16 @@ class Similarity(object):
                 truth_mat[x, y] = sim
                 y += 1
             x += 1
+        return truth_mat
 
-        if self.threshold != 0:
-            D = sparsify(truth_mat.tocsr(), self.threshold)
-        else:
-            D = truth_mat.tocsr()
-
-        del truth_mat, content_a, content_b
-        return D
 
     def jcn(self):
         semcor_ic = wordnet_ic.ic('ic-semcor.dat')
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        truth_mat = np.zeros(shape=(len(content_a), len(content_b)))
+
         x = 0
 
         for i in content_a:
@@ -714,20 +660,15 @@ class Similarity(object):
                 y += 1
             x += 1
 
-        if self.threshold != 0:
-            D = sparsify(truth_mat.tocsr(), self.threshold)
-        else:
-            D = truth_mat.tocsr()
-
-        del truth_mat, content_a, content_b
-        return D
+        return truth_mat
 
     def lin(self):
         semcor_ic = wordnet_ic.ic('ic-semcor.dat')
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
-        truth_mat = ss.lil_matrix((len(content_a), len(content_b)), dtype=np.float64)
+        truth_mat = np.zeros(shape=(len(content_a), len(content_b)))
+       
         x = 0
         for i in content_a:
             y = 0
@@ -742,13 +683,8 @@ class Similarity(object):
 
             x += 1
 
-        if self.threshold != 0:
-            D = sparsify(truth_mat.tocsr(), self.threshold)
-        else:
-            D = truth_mat.tocsr()
 
-        del truth_mat, content_a, content_b
-        return D
+        return truth_mat
 
     def random_sim(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
