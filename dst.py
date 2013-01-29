@@ -38,20 +38,19 @@ def spmatrixmul(matrix_a, matrix_b):
     This function takes two scipy matrices as input.
 
     """
-    # write to disk.
-    mmwrite('matrix_a.mtx', matrix_a)
-    mmwrite('matrix_b.mtx', matrix_b)
+    sp_matrix_a = spmatrix.ll_mat(matrix_a.shape[0], matrix_a.shape[1])
+    sp_matrix_b = spmatrix.ll_mat(matrix_b.shape[0], matrix_b.shape[1])
     # read it to form a pysparse spmatrix.
-    sp_matrix_a = spmatrix.ll_mat_from_mtx('matrix_a.mtx')
-    sp_matrix_b = spmatrix.ll_mat_from_mtx('matrix_b.mtx')
+    sp_matrix_a.update_add_at(matrix_a.tocoo().data, matrix_a.tocoo().row,
+            matrix_a.tocoo().col)
+    sp_matrix_b.update_add_at(matrix_b.tocoo().data, matrix_b.tocoo().row,
+            matrix_b.tocoo().col)
     # multiply the matrices.
     sp_result = spmatrix.matrixmultiply(sp_matrix_a, sp_matrix_b)
     #conversion to scipy sparse matrix
     data, row, col = sp_result.find()
     result = ss.csr_matrix((data, (row, col)), shape=sp_result.shape)
     #deleting files and refreshing memory
-    rm('matrix_a.mtx')
-    rm('matrix_b.mtx')
     del sp_result, sp_matrix_a, sp_matrix_b, matrix_a, matrix_b
 
     return result
@@ -67,7 +66,7 @@ class Get_truth(object):
     
     def sparsout(self, matrix):
         for i in range(matrix.shape[0]):
-            remval = ((matrix.sum(axis=1)[i] / matrix.shape[1])[0,0] * self.sparsity)/100
+            remval = ((matrix.sum(axis=1)[i] / matrix.shape[1])[0,0] * self.sparsity) / 100
             remlist = (np.where(matrix[i] <= remval))[1].tolist()[0]
             for x in remlist:
                 matrix[i,x] = 0
@@ -110,6 +109,11 @@ class Get_truth(object):
 
         return self.convert(np_truth), self.convert(np_test)
 
+def np_pseudoinverse(Mat):
+
+    result = np.linalg.pinv(Mat.todense()) 
+    
+    return ss.csr_matrix(np.nan_to_num(result))
 
 def pseudoinverse(Mat, precision):
     """
@@ -172,6 +176,55 @@ def pseudoinverse(Mat, precision):
         del ut, s, vt, UT, SI, VT, temp_matrix
 
     return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+
+def psp_pseudoinverse(Mat, precision):
+
+    list_nz = (Mat.sum(axis=1) == 1) 
+    list_mat = []
+    
+    for i in range(list_nz):
+        if list_nz[i]:
+            list_mat.append(i)
+    
+    temp_Mat = Mat[list_mat, :]
+    matrix = spmatrix.ll_mat(temp_Mat.shape[0], temp_Mat.shape[1])
+    matrix.update_add_at(temp_Mat.tocoo().data, temp_Mat.tocoo().row,
+            temp_Mat.tocoo().col)
+
+    if matrix.shape[0] <= matrix.shape[1]:
+
+        k = int((precision * matrix.shape[0]) / 100)
+        ut, s, vt = sparsesvd(matrix.tocsc(), k)
+        UT = ss.csr_matrix(ut)
+        SI = ss.csr_matrix(np.diag(1 / s))
+        VT = ss.csr_matrix(vt)
+
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
+        del ut, s, vt, UT, SI, VT, temp_matrix
+
+    else:
+
+        k = int((precision * matrix.transpose().shape[0]) / 100)
+        ut, s, vt = sparsesvd(matrix.transpose().tocsc(), k)
+        UT = ss.csr_matrix(ut)
+        SI = ss.csr_matrix(np.diag(1 / s))
+        VT = ss.csr_matrix(vt)
+
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        del ut, s, vt, UT, SI, VT, temp_matrix
+
+    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+
 
 
 
@@ -735,10 +788,7 @@ class Compute(object):
         if 'result_matrix' in kwargs:
             self.result_matrix = kwargs['result_matrix']
 
-        if 'svd' in kwargs:
-            self.svd = 'set'
-        else:
-            self.svd = 'unset'
+        self.svd = kwargs[svd]
 
     def fnorm(self, value):
 
@@ -756,7 +806,7 @@ class Compute(object):
 
     def matcal(self, type):
 
-        if self.svd is 'set':
+        if self.svd is 'sparsesvd':
 
             if self.are_equal is 'set':
 
@@ -766,13 +816,18 @@ class Compute(object):
 
                 main_mat_inv, transpose_val1 = sci_pseudoinverse(self.main_matrix, self.precision)
                 transpose_matrix_inv, transpose_val2 = sci_pseudoinverse(self.transpose_matrix, self.precision)
-        else:
+        elif self.svd is 'scipy':
 
             if self.are_equal is 'set':
                 main_mat_inv, transpose_matrix_inv = pseudoinverse(self.main_matrix, self.precision)
             else:
                 main_mat_inv, transpose_val1 = pseudoinverse(self.main_matrix, self.precision)
                 transpose_matrix_inv, transpose_val2 = pseudoinverse(self.transpose_matrix, self.precision)
+
+        else:
+
+            main_mat_inv = np_pseudoinverse(self.main_matrix)
+            transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
 
         if type is 'regular':
            # step-by-step multiplication
@@ -825,7 +880,7 @@ class Compute(object):
         svd_dict = {}
         result_list = []
 
-        if self.svd is 'set':
+        if self.svd is 'scipy':
             Utemp, Stemp, VTtemp = ssl.svds(svd_matrix.tocsc(),
                     k=(int (self.projection_matrix.tocsr().shape[0] * 75)/100))
 
