@@ -565,7 +565,6 @@ class Represent(object):
 
         for i in list(trifreq.elements()):
             (prefsuff, word) = i.split(r':1:')
-
             if prefsuff not in hashpref[word]:
                 hashpref[word].append(prefsuff)
                 scorepref[word].append(trifreq[i])
@@ -573,26 +572,19 @@ class Represent(object):
             if word not in reversehash[prefsuff]:
                 reversehash[prefsuff].append(word)
         print 'done with getting the hashpref and scorepref'
-
+        print reversehash.keys(), hashpref.keys()
         M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
         x = 0
 
-        conditemlist = reversehash.items()
+        revkeylist = reversehash.keys()
         
         for fword in content:
-            y = 0
-
-            for key, ilist in conditemlist:
-                
-                if fword in ilist:
-                    pos = hashpref[fword].index(key)
-                    value = scorepref[fword][pos]
-                else:
-                    value = 0
-                if value:
-                    M[x, y] = value
-
-                y += 1
+            flist = hashpref[fword]
+            for i in flist:
+                y = revkeylist.index(i)
+                pos = hashpref[fword].index(i)
+                value = scorepref[fword][pos]
+                M[x, y] = value
 
             x += 1
 
@@ -788,7 +780,10 @@ class Compute(object):
         if 'result_matrix' in kwargs:
             self.result_matrix = kwargs['result_matrix']
 
-        self.svd = kwargs[svd]
+        if 'svd' in kwargs:
+            self.svd  = kwargs['svd']
+        else:
+            self.svd = None
 
     def fnorm(self, value):
 
