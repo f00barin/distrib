@@ -781,7 +781,7 @@ class Compute(object):
             self.result_matrix = kwargs['result_matrix']
 
         if 'svd' in kwargs:
-            self.svd  = kwargs['svd']
+            self.svd = kwargs['svd']
         else:
             self.svd = None
 
@@ -801,7 +801,7 @@ class Compute(object):
 
     def matcal(self, type):
 
-        if self.svd is 'sparsesvd':
+        if self.svd is 'scipy':
 
             if self.are_equal is 'set':
 
@@ -811,7 +811,7 @@ class Compute(object):
 
                 main_mat_inv, transpose_val1 = sci_pseudoinverse(self.main_matrix, self.precision)
                 transpose_matrix_inv, transpose_val2 = sci_pseudoinverse(self.transpose_matrix, self.precision)
-        elif self.svd is 'scipy':
+        elif self.svd is 'sparsesvd':
 
             if self.are_equal is 'set':
                 main_mat_inv, transpose_matrix_inv = pseudoinverse(self.main_matrix, self.precision)
@@ -877,14 +877,16 @@ class Compute(object):
 
         if self.svd is 'scipy':
             Utemp, Stemp, VTtemp = ssl.svds(svd_matrix.tocsc(),
-                    k=(int (self.projection_matrix.tocsr().shape[0] * 75)/100))
+                    k=(int (self.projection_matrix.tocsr().shape[0] *
+                        self.precision)/100))
 
             U = np.nan_to_num(Utemp.transpose())
             S = np.nan_to_num(Stemp)
             VT = np.nan_to_num(VTtemp)
-        else:
-            (U, S, VT) = sparsesvd(svd_matrix.tocsc(),
-                (self.projection_matrix.tocsr().shape[0]))
+
+        if self.svd is 'sparsesvd':
+            (U, S, VT) = sparsesvd(svd_matrix, (self.projection_matrix.shape[0]))
+            print U, S, VT
 
         rank = U.shape[0]
 
@@ -909,10 +911,7 @@ class Compute(object):
             svd_dict[k] = fresult
             del matrix_result, fresult, difference
 
-        result = OrderedDict(sorted(svd_dict.items(),
-                    key=lambda t: np.float64(t[1])))
-
-        return result, result_list, U, S, VT
+        return svd_dict, result_list, U, S, VT
 
     def wsvd(self):
 
