@@ -14,6 +14,7 @@ from scipy.io import mmwrite
 from pysparse import spmatrix
 import scipy.sparse.linalg as ssl
 import h5py
+import scikits.learn.utils.extmath as slue
 
 def spmatrixmul(matrix_a, matrix_b):
     """
@@ -114,6 +115,45 @@ def np_pseudoinverse(Mat):
     result = np.linalg.pinv(Mat.todense()) 
     
     return ss.csr_matrix(np.nan_to_num(result))
+
+def fast_pseudoinverse(matrix, precision):
+
+    if matrix.shape[0] <= matrix.shape[1]:
+        val = int((precision * matrix.shape[0]) / 100)
+        u, s, vt = slue.fast_svd(matrix, val)
+        UT = ss.csr_matrix(np.nan_to_num(u.transpose()))
+        SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
+        VT = ss.csr_matrix(np.nan_to_num(vt))
+
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
+        del u, s, vt, UT, SI, VT, temp_matrix
+
+    else:
+        val = int((precision * matrix.transpose().shape[0]) / 100)
+        u, s, vt = slue.fast_svd(matrix.transpose(), val)
+        UT = ss.csr_matrix(np.nan_to_num(u.transpose()))
+        SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
+        VT = ss.csr_matrix(np.nan_to_num(vt))
+
+        temp_matrix = spmatrixmul(VT.transpose(), SI)
+        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
+        del temp_matrix
+
+        temp_matrix = spmatrixmul(UT.transpose(), SI)
+        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        del u, s, vt, UT, SI, VT, temp_matrix
+
+
+
+    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+
+
+
 
 def pseudoinverse(Mat, precision):
     """
@@ -819,6 +859,18 @@ class Compute(object):
                 main_mat_inv, transpose_val1 = pseudoinverse(self.main_matrix, self.precision)
                 transpose_matrix_inv, transpose_val2 = pseudoinverse(self.transpose_matrix, self.precision)
 
+        if self.svd is 'fast':
+
+            if self.are_equal is 'set':
+
+                main_mat_inv, transpose_matrix_inv = fast_pseudoinverse(self.main_matrix, self.precision)
+
+            else:
+
+                main_mat_inv, transpose_val1 = fast_pseudoinverse(self.main_matrix, self.precision)
+                transpose_matrix_inv, transpose_val2 = fast_pseudoinverse(self.transpose_matrix, self.precision)
+       
+
         else:
 
             main_mat_inv = np_pseudoinverse(self.main_matrix)
@@ -887,6 +939,16 @@ class Compute(object):
         if self.svd is 'sparsesvd':
             (U, S, VT) = sparsesvd(svd_matrix, (self.projection_matrix.shape[0]))
             print U, S, VT
+
+        if self.svd is 'fast':
+            Utemp, Stemp, VTtemp = slue.fast_svd(svd_matrix,
+                    (int (self.projection_matrix.tocsr().shape[0] *
+                        self.precision)/100))
+
+            U = np.nan_to_num(Utemp.transpose())
+            S = np.nan_to_num(Stemp)
+            VT = np.nan_to_num(VTtemp)
+
 
         rank = U.shape[0]
 
