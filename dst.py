@@ -15,6 +15,7 @@ from pysparse import spmatrix
 import scipy.sparse.linalg as ssl
 import h5py
 import scikits.learn.utils.extmath as slue
+from sklearn.utils.extmath import randomized_svd as fast_svd
 
 def spmatrixmul(matrix_a, matrix_b):
     """
@@ -55,6 +56,9 @@ def spmatrixmul(matrix_a, matrix_b):
     del sp_result, sp_matrix_a, sp_matrix_b, matrix_a, matrix_b
 
     return result
+
+   
+
 
 class Get_truth(object):
 
@@ -127,10 +131,6 @@ def fast_pseudoinverse(matrix, precision):
 
         temp_matrix = spmatrixmul(VT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
     else:
@@ -140,17 +140,13 @@ def fast_pseudoinverse(matrix, precision):
         SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
         VT = ss.csr_matrix(np.nan_to_num(vt))
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
         temp_matrix = spmatrixmul(UT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, VT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
 
 
-    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+    return pinv_matrix.tocsr()
 
 
 
@@ -193,10 +189,6 @@ def pseudoinverse(Mat, precision):
 
         temp_matrix = spmatrixmul(VT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
     else:
@@ -207,15 +199,11 @@ def pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.diag(1 / s))
         VT = ss.csr_matrix(vt)
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
         temp_matrix = spmatrixmul(UT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, VT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
-    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+    return pinv_matrix.tocsr()
 
 def psp_pseudoinverse(Mat, precision):
 
@@ -241,10 +229,6 @@ def psp_pseudoinverse(Mat, precision):
 
         temp_matrix = spmatrixmul(VT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
     else:
@@ -255,15 +239,11 @@ def psp_pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.diag(1 / s))
         VT = ss.csr_matrix(vt)
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
         temp_matrix = spmatrixmul(UT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, VT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
-    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+    return pinv_matrix.tocsr()
 
 
 
@@ -285,10 +265,6 @@ def sci_pseudoinverse(Mat, precision):
 
         temp_matrix = spmatrixmul(VT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, VT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
     else:
@@ -298,17 +274,13 @@ def sci_pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
         VT = ss.csr_matrix(np.nan_to_num(vt))
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix_t = spmatrixmul(temp_matrix, UT)
-        del temp_matrix
-
         temp_matrix = spmatrixmul(UT.transpose(), SI)
         pinv_matrix = spmatrixmul(temp_matrix, VT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
 
 
-    return pinv_matrix.tocsr(), pinv_matrix_t.tocsr()
+    return pinv_matrix.tocsr()
 
 
 
@@ -370,7 +342,20 @@ def splicematrix(matrix_a, matrix_b, matrix_c, value):
 
     return sk.normalize(matrix_a.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1), sk.normalize(matrix_b.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1), sk.normalize(matrix_c.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1)
 
-    
+
+def sparsify(m, value=100):
+
+    matrix = m.tolil()
+    rows, columns = matrix.shape
+    sparseindex = matrix.mean(axis=1) * (value/float(100))
+    for r in range(rows):
+        z = np.where(matrix.tocsr()[r].todense() < sparseindex[r])[1]
+        for c in range(z.shape[1]):
+            var = int(z[0,c])
+            matrix[r, var] =  0
+
+    return matrix.tocsr()
+
 
  
 
@@ -612,7 +597,6 @@ class Represent(object):
             if word not in reversehash[prefsuff]:
                 reversehash[prefsuff].append(word)
         print 'done with getting the hashpref and scorepref'
-        print reversehash.keys(), hashpref.keys()
         M = ss.lil_matrix((len(content), len(reversehash.keys())), dtype=np.float64)
         x = 0
 
@@ -790,7 +774,11 @@ class Compute(object):
 
         if 'main_matrix' in kwargs:
             self.main_matrix = kwargs['main_matrix']
+        if 'test_matrix' in kwargs:
+            self.test_matrix = kwargs['test_matrix']
 
+
+        
         if 'precision' in kwargs:
             self.precision = kwargs['precision']
         else:
@@ -841,45 +829,51 @@ class Compute(object):
 
     def matcal(self, type):
 
-        if self.svd is 'scipy':
-
-            if self.are_equal is 'set':
-
-                main_mat_inv, transpose_matrix_inv = sci_pseudoinverse(self.main_matrix, self.precision)
-
-            else:
-
-                main_mat_inv, transpose_val1 = sci_pseudoinverse(self.main_matrix, self.precision)
-                transpose_matrix_inv, transpose_val2 = sci_pseudoinverse(self.transpose_matrix, self.precision)
-        elif self.svd is 'sparsesvd':
-
-            if self.are_equal is 'set':
-                main_mat_inv, transpose_matrix_inv = pseudoinverse(self.main_matrix, self.precision)
-            else:
-                main_mat_inv, transpose_val1 = pseudoinverse(self.main_matrix, self.precision)
-                transpose_matrix_inv, transpose_val2 = pseudoinverse(self.transpose_matrix, self.precision)
-
-        if self.svd is 'fast':
-
-            if self.are_equal is 'set':
-
-                main_mat_inv, transpose_matrix_inv = fast_pseudoinverse(self.main_matrix, self.precision)
-
-            else:
-
-                main_mat_inv, transpose_val1 = fast_pseudoinverse(self.main_matrix, self.precision)
-                transpose_matrix_inv, transpose_val2 = fast_pseudoinverse(self.transpose_matrix, self.precision)
-       
-
-        else:
-
-            main_mat_inv = np_pseudoinverse(self.main_matrix)
-            transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
-
+            
         if type is 'regular':
+
+            if self.svd is 'scipy':
+
+                if self.are_equal is 'set':
+
+                    main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
+
+                else:
+
+                    main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
+                    transpose_matrix_inv = sci_pseudoinverse(self.transpose_matrix, self.precision)
+            elif self.svd is 'sparsesvd':
+
+                if self.are_equal is 'set':
+                    main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
+                else:
+                    main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
+                    transpose_matrix_inv = pseudoinverse(self.transpose_matrix, self.precision)
+
+            elif self.svd is 'fast':
+
+                if self.are_equal is 'set':
+
+                    main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
+
+                else:
+
+                    main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
+                    transpose_matrix_inv = fast_pseudoinverse(self.transpose_matrix, self.precision)
+        
+
+            else:
+
+                main_mat_inv = np_pseudoinverse(self.main_matrix)
+                transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
+
            # step-by-step multiplication
             temp_matrix = spmatrixmul(self.truth_matrix, transpose_matrix_inv)
+            print 'got the transpose_matrix_inv' 
+
             projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
+            print 'got the main_mat_inv' 
+
             del temp_matrix
 
             temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
@@ -922,6 +916,36 @@ class Compute(object):
 
             return projection_matrix, result, fresult
 
+    def usvmatrix(self, U, S, VT):
+
+        svd_dict = {}
+        result_list = []
+        rank = U.shape[0]
+
+        for k in cfor(1, lambda j: j <= rank, lambda j: j + 25):
+
+            ut = U[:k]
+            s = S[:k]
+            vt = VT[:k]
+            matrix_u = ss.csr_matrix(ut.T)
+            matrix_s = ss.csr_matrix(np.diag(s))
+            matrix_vt = ss.csr_matrix(vt)
+
+            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
+            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
+            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
+            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
+            del temp_matrix, temp_matrix_a, temp_matrix_b
+
+            result_list.append(matrix_result)
+            difference = (matrix_result - self.truth_matrix)
+            fresult = self.fnorm(difference)
+            svd_dict[k] = fresult
+            print 'k = ', k, 'fresult = ', fresult
+            del matrix_result, fresult, difference
+
+        return svd_dict, result_list
+
     def matrixsvd(self):
         svd_matrix = self.projection_matrix.tocsc()
         svd_dict = {}
@@ -937,11 +961,11 @@ class Compute(object):
             VT = np.nan_to_num(VTtemp)
 
         if self.svd is 'sparsesvd':
-            (U, S, VT) = sparsesvd(svd_matrix, (self.projection_matrix.shape[0]))
+            (U, S, VT) = sparsesvd(svd_matrix, (int (svd_matrix.shape[0] * self.precision)/100))
             print U, S, VT
 
         if self.svd is 'fast':
-            Utemp, Stemp, VTtemp = slue.fast_svd(svd_matrix,
+            Utemp, Stemp, VTtemp = fast_svd(svd_matrix,
                     (int (self.projection_matrix.tocsr().shape[0] *
                         self.precision)/100))
 
@@ -971,6 +995,39 @@ class Compute(object):
             difference = (matrix_result - self.truth_matrix)
             fresult = self.fnorm(difference)
             svd_dict[k] = fresult
+            print 'k = ', k, 'fresult = ', fresult
+            del matrix_result, fresult, difference
+
+        return svd_dict, result_list, U, S, VT
+
+    def pca(self):
+        svd_dict = {}
+        result_list = []
+
+
+#        U, S, VT = sparsesvd(spmatrixmul(self.transpose_matrix.transpose(),
+#            self.transpose_matrix).tocsc(),
+#            (int(self.precision*self.transpose_matrix.shape[0])/100))
+
+        U, S, VT = sparsesvd(spmatrixmul(self.transpose_matrix.transpose()).tocsc(), (int(self.precision*self.transpose_matrix.shape[0])/100))
+
+        
+        for k in cfor(1, lambda i: i < U.shape[1], lambda i: i+25):
+            ut = U[:k]
+            matrix_u = ss.csr_matrix(ut.T)
+            matrix_ut = ss.csr_matrix(ut)
+
+            temp_matrix   = spmatrixmul(self.test_matrix, matrix_u)
+            temp_matrix_a = spmatrixmul(matrix_ut,
+                    self.transpose_matrix.transpose())
+            matrix_result = spmatrixmul(temp_matrix, temp_matrix_a)
+            del temp_matrix, temp_matrix_a
+
+            result_list.append(matrix_result)
+            difference = (matrix_result - self.truth_matrix)
+            fresult = self.fnorm(difference)
+            svd_dict[k] = fresult
+            print 'k = ', k, 'fresult = ', fresult
             del matrix_result, fresult, difference
 
         return svd_dict, result_list, U, S, VT
