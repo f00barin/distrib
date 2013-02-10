@@ -972,10 +972,11 @@ class Compute(object):
             S = np.nan_to_num(Stemp)
             VT = np.nan_to_num(VTtemp)
 
-        if self.svd is 'sparsesvd':
+        elif self.svd is 'sparsesvd':
             (U, S, VT) = sparsesvd(svd_matrix, (int (svd_matrix.shape[0] * self.precision)/100))
 
-        if self.svd is 'fast':
+        elif self.svd is 'fast':
+
             Utemp, Stemp, VTtemp = fast_svd(svd_matrix,
                     (int (self.projection_matrix.tocsr().shape[0] *
                         self.precision)/100))
@@ -983,6 +984,18 @@ class Compute(object):
             U = np.nan_to_num(Utemp.transpose())
             S = np.nan_to_num(Stemp)
             VT = np.nan_to_num(VTtemp)
+
+        else: 
+
+            Utemp, Stemp, VTtemp = np.linalg.svd(svd_matrix.todense())
+
+            U = np.nan_to_num(Utemp.transpose())
+            S = np.nan_to_num(Stemp)
+            VT = np.nan_to_num(VTtemp)
+
+
+
+        
 
 
         rank = U.shape[0]
