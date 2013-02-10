@@ -829,7 +829,9 @@ class Compute(object):
 
     def matcal(self, type):
 
-            
+        global main_mat_inv 
+        global transpose_matrix_inv
+
         if type is 'regular':
 
             if self.svd is 'scipy':
@@ -843,6 +845,7 @@ class Compute(object):
                     main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = sci_pseudoinverse(self.transpose_matrix, self.precision)
             elif self.svd is 'sparsesvd':
+                print 'here'
 
                 if self.are_equal is 'set':
                     main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
@@ -903,8 +906,12 @@ class Compute(object):
             fresult = self.fnorm(difference)
             return result, fresult
         elif type is 'identity':
-            temp_matrix = spmatrixmul(ss.identity(self.main_matrix.shape[1],
-                format='csr'), transpose_matrix_inv)
+            o = np.ones(self.truth_matrix.shape[0])
+            identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
+            identity_matrix.setdiag(o)
+
+           
+            temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
             print 'got the transpose_matrix_inv' 
 
             projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
