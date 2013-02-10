@@ -903,10 +903,15 @@ class Compute(object):
             fresult = self.fnorm(difference)
             return result, fresult
         elif type is 'identity':
-        
-            projection_matrix = ss.identity(self.main_matrix.shape[1],
-                    dtype=np.float64, format='csr')
-            
+            temp_matrix = spmatrixmul(ss.identity(self.main_matrix.shape[1],
+                format='csr'), transpose_matrix_inv)
+            print 'got the transpose_matrix_inv' 
+
+            projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
+            print 'got the main_mat_inv' 
+
+            del temp_matrix
+
             temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
             result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
             del temp_matrix
@@ -962,7 +967,6 @@ class Compute(object):
 
         if self.svd is 'sparsesvd':
             (U, S, VT) = sparsesvd(svd_matrix, (int (svd_matrix.shape[0] * self.precision)/100))
-            print U, S, VT
 
         if self.svd is 'fast':
             Utemp, Stemp, VTtemp = fast_svd(svd_matrix,
