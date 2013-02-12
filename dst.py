@@ -1200,7 +1200,7 @@ class Compute(object):
 
                 if k == 1: 
                     k += (self.step -1)
-                else
+                else:
                     k += self.step
  
             return svd_dict, result_list
