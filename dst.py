@@ -772,13 +772,17 @@ class Compute(object):
 
     def __init__(self, **kwargs):
 
+        if 'steps' in kwargs:
+            self.steps = kwargs['steps']
+
         if 'main_matrix' in kwargs:
             self.main_matrix = kwargs['main_matrix']
         if 'test_matrix' in kwargs:
             self.test_matrix = kwargs['test_matrix']
 
+        if 'p' in kwargs:
+            self.pca = kwargs['p']
 
-        
         if 'precision' in kwargs:
             self.precision = kwargs['precision']
         else:
@@ -906,13 +910,57 @@ class Compute(object):
             fresult = self.fnorm(difference)
             return result, fresult
         elif type is 'identity':
+
+            if self.svd is 'scipy':
+
+                if self.are_equal is 'set':
+
+                    main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
+
+                else:
+
+                    main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
+                    transpose_matrix_inv = sci_pseudoinverse(self.transpose_matrix, self.precision)
+            elif self.svd is 'sparsesvd':
+                print 'here'
+
+                if self.are_equal is 'set':
+                    main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
+                else:
+                    main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
+                    transpose_matrix_inv = pseudoinverse(self.transpose_matrix, self.precision)
+
+            elif self.svd is 'fast':
+
+                if self.are_equal is 'set':
+
+                    main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
+
+                else:
+
+                    main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
+                    transpose_matrix_inv = fast_pseudoinverse(self.transpose_matrix, self.precision)
+        
+
+            else:
+
+                main_mat_inv = np_pseudoinverse(self.main_matrix)
+                transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
+
+
+
             o = np.ones(self.truth_matrix.shape[0])
+            print o
+
             identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
             identity_matrix.setdiag(o)
+            print identity_matrix
 
            
             temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
             print 'got the transpose_matrix_inv' 
+            
+            print temp_matrix
 
             projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
             print 'got the main_mat_inv' 
@@ -934,7 +982,9 @@ class Compute(object):
         result_list = []
         rank = U.shape[0]
 
-        for k in cfor(1, lambda j: j <= rank, lambda j: j + 25):
+        #for k in cfor(1, lambda j: j <= rank, lambda j: j + 25):
+        k = 1
+        while k <= rank:
 
             ut = U[:k]
             s = S[:k]
@@ -955,6 +1005,11 @@ class Compute(object):
             svd_dict[k] = fresult
             print 'k = ', k, 'fresult = ', fresult
             del matrix_result, fresult, difference
+
+            if k == 1:
+                k += (self.step -1)
+            else:
+                k += self.step
 
         return svd_dict, result_list
 
@@ -1000,7 +1055,9 @@ class Compute(object):
 
         rank = U.shape[0]
 
-        for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+        #for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+        k = 1
+        while k <= rank:
 
             ut = U[:k]
             s = S[:k]
@@ -1021,6 +1078,11 @@ class Compute(object):
             svd_dict[k] = fresult
             print 'k = ', k, 'fresult = ', fresult
             del matrix_result, fresult, difference
+
+            if k == 1:
+                k += (self.step - 1)
+            else:
+                k += self.step
 
         return svd_dict, result_list, U, S, VT
     
@@ -1031,7 +1093,9 @@ class Compute(object):
 
         rank = U.shape[0]
 
-        for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+        #for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+        k = 1
+        while k <= rank:
 
             ut = U[:k]
             s = S[:k]
@@ -1053,40 +1117,95 @@ class Compute(object):
             print 'k = ', k, 'fresult = ', fresult
             del matrix_result, fresult, difference
 
+            if k == 1:
+                k += (self.step - 1) 
+            else:
+                k += self.step
+
         return svd_dict, result_list, U, S, VT
 
 
-    def pca(self):
-        svd_dict = {}
-        result_list = []
+    def matrixpca(self):
+
+        if self.pca is 'candidate':
+            svd_dict = {}
+            result_list = []
 
 
-        cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
+            cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
 
-        u, s, vt = np.linalg.svd(cov) 
-        
-        print 'transpose matrix shape',self.transpose_matrix.shape
-        U = u.transpose()
-        print U.shape
-
-        for k in cfor(1, lambda i: i < U.shape[1], lambda i: i+25):
-            ut = U[:k]
-            matrix_u = ss.csr_matrix(ut.T)
-            matrix_ut = ss.csr_matrix(ut)
-            temp_matrix = matrix_ut * self.transpose_matrix
-            candidates = (matrix_u * temp_matrix)
-            print candidates.shape
+            u, s, vt = np.linalg.svd(cov) 
             
-            matrix_result = self.main_matrix * candidates
-            print matrix_result.shape
-            result_list.append(matrix_result)
-            difference = (matrix_result - self.truth_matrix)
-            fresult = self.fnorm(difference)
-            svd_dict[k] = fresult
-            print 'k = ', k, 'fresult = ', fresult
-            del matrix_result, fresult, difference
+            print 'transpose matrix shape',self.transpose_matrix.shape
+            U = u.transpose()
+            print U.shape
 
-        return svd_dict, result_list
+#            for k in cfor(1, lambda i: i <= U.shape[1], lambda i: i+25):
+            k = 1
+            while k <= U.shape[0]:
+                ut = U[:k]
+                matrix_u = ss.csr_matrix(ut.T)
+                matrix_ut = ss.csr_matrix(ut)
+                temp_matrix = matrix_ut * self.transpose_matrix
+                candidates = (matrix_u * temp_matrix)
+                print candidates.shape
+                
+                matrix_result = self.main_matrix * candidates
+                print matrix_result.shape
+                result_list.append(matrix_result)
+                difference = (matrix_result - self.truth_matrix)
+                fresult = self.fnorm(difference)
+                svd_dict[k] = fresult
+                print 'k = ', k, 'fresult = ', fresult
+                del matrix_result, fresult, difference
+
+                if k == 1: 
+                    k += (self.step - 1)
+                else:
+                    k += self.step
+                
+
+            return svd_dict, result_list
+
+        elif self.pca is 'all':
+
+            svd_dict = {}
+            result_list = []
+            cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
+
+            u, s, vt = np.linalg.svd(cov) 
+            
+            print 'transpose matrix shape',self.transpose_matrix.shape
+            U = u.transpose()
+            print U.shape
+
+#            for k in cfor(1, lambda i: i < U.shape[1], lambda i: i+25):
+            k  =1
+            while k <= U.shape[0]:
+                ut = U[:k]
+                matrix_u = ss.csr_matrix(ut.T)
+                matrix_ut = ss.csr_matrix(ut)
+
+                temp_a = self.main_matrix * matrix_u
+                temp_b = matrix_ut * self.transpose_matrix
+
+                matrix_result  = temp_a * temp_b
+                print matrix_result.shape
+                result_list.append(matrix_result)
+                difference = (matrix_result - self.truth_matrix)
+                fresult = self.fnorm(difference)
+                svd_dict[k] = fresult
+                print 'k = ', k, 'fresult = ', fresult
+                del matrix_result, fresult, difference
+
+                if k == 1: 
+                    k += (self.step -1)
+                else
+                    k += self.step
+ 
+            return svd_dict, result_list
+
+
 
     def wsvd(self):
 
@@ -1100,7 +1219,10 @@ class Compute(object):
             mat_utt, mat_st, mat_vtt = sparsesvd(self.transpose_matrix.tocsc(),
                     self.transpose_matrix.shape[0])
 
-            for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+#            for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+            k = 1
+            while k <= rank:
+
                 ut = mat_ut[:k]
                 s = mat_s[:k]
                 vt = mat_vt[:k]
@@ -1133,13 +1255,20 @@ class Compute(object):
                 fresult = self.fnorm(difference)
                 svd_dict[k] = fresult
                 del matrix_result, difference, fresult, ut, s, vt, utt, st, vtt, UT, SI, VT, UTT, SIT, VTT, projection_func
+                if k == 1:
+                    k += (self.step - 1)
+                else:
+                    k += self.step
 
         else:
             mat_ut, mat_s, mat_vt = sparsesvd(self.main_matrix.tocsc(),
                     self.main_matrix.shape[0])
             rank = mat_ut.shape[0]
 
-            for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+#            for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+            k = 1
+            while k <= rank:
+
                 ut = mat_ut[:k]
                 s = mat_s[:k]
                 vt = mat_vt[:k]
@@ -1165,6 +1294,11 @@ class Compute(object):
                 fresult = self.fnorm(difference)
                 svd_dict[k] = fresult
                 del matrix_result, difference, fresult, ut, s, UT, SI, VT, projection_func
+
+                if k == 1:
+                    k += self.step -1
+                else:
+                    k += self.step
 
         result = OrderedDict(sorted(svd_dict.items(),
                     key=lambda t: np.float64(t[1])))
