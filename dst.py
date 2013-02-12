@@ -1023,29 +1023,28 @@ class Compute(object):
             del matrix_result, fresult, difference
 
         return svd_dict, result_list, U, S, VT
+    
+    def dimred(self, U, S, VT):
 
-    def pca(self):
         svd_dict = {}
         result_list = []
 
+        rank = U.shape[0]
 
-#        U, S, VT = sparsesvd(spmatrixmul(self.transpose_matrix.transpose(),
-#            self.transpose_matrix).tocsc(),
-#            (int(self.precision*self.transpose_matrix.shape[0])/100))
+        for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
 
-        U, S, VT = sparsesvd(spmatrixmul(self.transpose_matrix.transpose()).tocsc(), (int(self.precision*self.transpose_matrix.shape[0])/100))
-
-        
-        for k in cfor(1, lambda i: i < U.shape[1], lambda i: i+25):
             ut = U[:k]
+            s = S[:k]
+            vt = VT[:k]
             matrix_u = ss.csr_matrix(ut.T)
-            matrix_ut = ss.csr_matrix(ut)
+            matrix_s = ss.csr_matrix(np.diag(s))
+            matrix_vt = ss.csr_matrix(vt)
 
-            temp_matrix   = spmatrixmul(self.test_matrix, matrix_u)
-            temp_matrix_a = spmatrixmul(matrix_ut,
-                    self.transpose_matrix.transpose())
-            matrix_result = spmatrixmul(temp_matrix, temp_matrix_a)
-            del temp_matrix, temp_matrix_a
+            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
+            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
+            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
+            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
+            del temp_matrix, temp_matrix_a, temp_matrix_b
 
             result_list.append(matrix_result)
             difference = (matrix_result - self.truth_matrix)
@@ -1055,6 +1054,39 @@ class Compute(object):
             del matrix_result, fresult, difference
 
         return svd_dict, result_list, U, S, VT
+
+
+    def pca(self):
+        svd_dict = {}
+        result_list = []
+
+
+        cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
+
+        u, s, vt = np.linalg.svd(cov) 
+        
+        print 'transpose matrix shape',self.transpose_matrix.shape
+        U = u.transpose()
+        print U.shape
+
+        for k in cfor(1, lambda i: i < U.shape[1], lambda i: i+25):
+            ut = U[:k]
+            matrix_u = ss.csr_matrix(ut.T)
+            matrix_ut = ss.csr_matrix(ut)
+            temp_matrix = matrix_ut * self.transpose_matrix
+            candidates = (matrix_u * temp_matrix)
+            print candidates.shape
+            
+            matrix_result = self.main_matrix * candidates
+            print matrix_result.shape
+            result_list.append(matrix_result)
+            difference = (matrix_result - self.truth_matrix)
+            fresult = self.fnorm(difference)
+            svd_dict[k] = fresult
+            print 'k = ', k, 'fresult = ', fresult
+            del matrix_result, fresult, difference
+
+        return svd_dict, result_list
 
     def wsvd(self):
 
