@@ -772,8 +772,8 @@ class Compute(object):
 
     def __init__(self, **kwargs):
 
-        if 'steps' in kwargs:
-            self.steps = kwargs['steps']
+        if 'step' in kwargs:
+            self.step = kwargs['step']
 
         if 'main_matrix' in kwargs:
             self.main_matrix = kwargs['main_matrix']
@@ -817,9 +817,12 @@ class Compute(object):
         else:
             self.svd = None
 
-    def fnorm(self, matrix):
+    def fnorm(self, matrix, sparse='no'):
+        if sparse is 'no':
+            return np.linalg.norm(matrix.todense(), 'fro')
+        else:
+            return np.sqrt(((spmatrixmul(matrix.transpose(), matrix)).diagonal()).sum())
 
-        return np.sqrt(((spmatrixmul(matrix.transpose(), matrix)).diagonal()).sum())
 
     def matcal(self, type):
 
@@ -1078,11 +1081,10 @@ class Compute(object):
     
     def dimred(self, U, S, VT):
 
-        svd_dict = {}
         result_list = []
 
         rank = U.shape[0]
-
+        print 'rank', rank
         #for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
         k = 1
         while k <= rank:
@@ -1094,25 +1096,26 @@ class Compute(object):
             matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
 
-            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
-            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
-            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
-            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
+            temp_matrix = self.main_matrix * matrix_u
+            print 'got temp mat'
+            temp_matrix_a = matrix_s * matrix_vt
+            print 'got temp mat a'
+            temp_matrix_b = temp_matrix_a * self.transpose_matrix.tocsr()
+            print 'got temp mat b'
+            matrix_result = temp_matrix * temp_matrix_b
+            print 'got main matrix'
+
             del temp_matrix, temp_matrix_a, temp_matrix_b
 
             result_list.append(matrix_result)
-            difference = (matrix_result - self.truth_matrix)
-            fresult = self.fnorm(difference)
-            svd_dict[k] = fresult
-            print 'k = ', k, 'fresult = ', fresult
-            del matrix_result, fresult, difference
+            del matrix_result
 
             if k == 1:
                 k += (self.step - 1) 
             else:
                 k += self.step
 
-        return svd_dict, result_list, U, S, VT
+        return result_list, U, S, VT
 
 
     def matrixpca(self):
@@ -1121,7 +1124,7 @@ class Compute(object):
             svd_dict = {}
             result_list = []
 
-
+            mean = self.transpose_matrix.mean(axis = 1)
             cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
 
             u, s, vt = np.linalg.svd(cov) 
@@ -1159,7 +1162,6 @@ class Compute(object):
 
         elif self.pca is 'all':
 
-            svd_dict = {}
             result_list = []
             cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
 
@@ -1167,11 +1169,12 @@ class Compute(object):
             
             print 'transpose matrix shape',self.transpose_matrix.shape
             U = u.transpose()
+            print 'here'
             print U.shape
 
-#            for k in cfor(1, lambda i: i < U.shape[1], lambda i: i+25):
             k  =1
             while k <= U.shape[0]:
+
                 ut = U[:k]
                 matrix_u = ss.csr_matrix(ut.T)
                 matrix_ut = ss.csr_matrix(ut)
@@ -1182,18 +1185,13 @@ class Compute(object):
                 matrix_result  = temp_a * temp_b
                 print matrix_result.shape
                 result_list.append(matrix_result)
-                difference = (matrix_result - self.truth_matrix)
-                fresult = self.fnorm(difference)
-                svd_dict[k] = fresult
-                print 'k = ', k, 'fresult = ', fresult
-                del matrix_result, fresult, difference
 
                 if k == 1: 
                     k += (self.step -1)
                 else:
                     k += self.step
  
-            return svd_dict, result_list
+            return result_list
 
 
 
