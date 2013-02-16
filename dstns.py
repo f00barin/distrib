@@ -18,7 +18,6 @@ import scikits.learn.utils.extmath as slue
 from sklearn.utils.extmath import randomized_svd as fast_svd
 
 
-#non sparse versoin
 def spmatrixmul(matrix_a, matrix_b):
     """
     Sparse Matrix Multiplication using pysparse matrix
@@ -59,9 +58,6 @@ def spmatrixmul(matrix_a, matrix_b):
 
     return result
 
-   
-
-
 class Get_truth(object):
 
     def __init__(self, **kwargs):
@@ -70,26 +66,26 @@ class Get_truth(object):
         self.sparsity = kwargs['sparsity']
         self.trows = kwargs['trows']
         self.name = kwargs['name']
-    
+
     def sparsout(self, matrix):
         for i in range(matrix.shape[0]):
-            remval = ((matrix.sum(axis=1)[i] / matrix.shape[1])[0,0] * self.sparsity) / 100
+            remval = ((matrix.sum(axis=1)[i] / matrix.shape[1])[0, 0] * self.sparsity) / 100
             remlist = (np.where(matrix[i] <= remval))[1].tolist()[0]
             for x in remlist:
-                matrix[i,x] = 0
+                matrix[i, x] = 0
 
         return matrix
-    
+
     def convert(self, matrix):
-        
+
         psp_mat = spmatrix.ll_mat(matrix.shape[0], matrix.shape[1])
-        
+
         for i in range(matrix.shape[0]):
             for j in range(matrix.shape[1]):
                 if matrix[i,j]:
                     psp_mat[i,j] = matrix[i,j]
 
-        
+
         data, row, col = psp_mat.find()
         csrmat = ss.csr_matrix((data, (row, col)), shape=psp_mat.shape)
 
@@ -97,15 +93,15 @@ class Get_truth(object):
 
 
     def get_truth(self):
-        
+
         f = h5py.File(self.hdf5file, 'r')
         dataset = f[self.name]
         temp = np.empty(dataset.shape, dataset.dtype)
         dataset.read_direct(temp)
-        
+
         truthmat = np.matrix(temp)
-        
-        total_col = (truthmat.shape[1] - self.trows) 
+
+        total_col = (truthmat.shape[1] - self.trows)
         trowstop = (truthmat.shape[0] - self.trows)
 
         temp_truth = truthmat[0:self.rows, 0:total_col]
@@ -116,11 +112,13 @@ class Get_truth(object):
 
         return self.convert(np_truth), self.convert(np_test)
 
+
 def np_pseudoinverse(Mat):
 
-    result = np.linalg.pinv(Mat.todense()) 
-    
+    result = np.linalg.pinv(Mat.todense())
+
     return ss.csr_matrix(np.nan_to_num(result))
+
 
 def fast_pseudoinverse(matrix, precision):
 
@@ -131,8 +129,8 @@ def fast_pseudoinverse(matrix, precision):
         SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
         VT = ss.csr_matrix(np.nan_to_num(vt))
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        temp_matrix = (VT.transpose() * SI)
+        pinv_matrix = (temp_matrix * UT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
     else:
@@ -142,15 +140,11 @@ def fast_pseudoinverse(matrix, precision):
         SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
         VT = ss.csr_matrix(np.nan_to_num(vt))
 
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        temp_matrix = (UT.transpose() * SI)
+        pinv_matrix = (temp_matrix * VT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
-
-
     return pinv_matrix.tocsr()
-
-
 
 
 def pseudoinverse(Mat, precision):
@@ -189,33 +183,34 @@ def pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.diag(1 / s))
         VT = ss.csr_matrix(vt)
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        temp_matrix = (VT.transpose() * SI)
+        pinv_matrix = (temp_matrix * UT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
     else:
 
         k = int((precision * matrix.transpose().shape[0]) / 100)
-        ut, s, vt = sparsesvd(matrix.transpose().tocsc(), k)
+        ut, s, vt = (matrix.transpose().tocsc() * k)
         UT = ss.csr_matrix(ut)
         SI = ss.csr_matrix(np.diag(1 / s))
         VT = ss.csr_matrix(vt)
 
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        temp_matrix = (UT.transpose() * SI)
+        pinv_matrix = (temp_matrix * VT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
     return pinv_matrix.tocsr()
 
+
 def psp_pseudoinverse(Mat, precision):
 
-    list_nz = (Mat.sum(axis=1) == 1) 
+    list_nz = (Mat.sum(axis=1) == 1)
     list_mat = []
-    
+
     for i in range(list_nz):
         if list_nz[i]:
             list_mat.append(i)
-    
+
     temp_Mat = Mat[list_mat, :]
     matrix = spmatrix.ll_mat(temp_Mat.shape[0], temp_Mat.shape[1])
     matrix.update_add_at(temp_Mat.tocoo().data, temp_Mat.tocoo().row,
@@ -229,8 +224,8 @@ def psp_pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.diag(1 / s))
         VT = ss.csr_matrix(vt)
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        temp_matrix = (VT.transpose() * SI)
+        pinv_matrix = (temp_matrix * UT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
     else:
@@ -241,12 +236,11 @@ def psp_pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.diag(1 / s))
         VT = ss.csr_matrix(vt)
 
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        temp_matrix = (UT.transpose() * SI)
+        pinv_matrix = (temp_matrix * VT)
         del ut, s, vt, UT, SI, VT, temp_matrix
 
     return pinv_matrix.tocsr()
-
 
 
 
@@ -265,8 +259,8 @@ def sci_pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
         VT = ss.csr_matrix(np.nan_to_num(vt))
 
-        temp_matrix = spmatrixmul(VT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, UT)
+        temp_matrix = (VT.transpose() * SI)
+        pinv_matrix = (temp_matrix * UT)
         del u, s, vt, UT, SI, VT, temp_matrix
 
     else:
@@ -276,15 +270,10 @@ def sci_pseudoinverse(Mat, precision):
         SI = ss.csr_matrix(np.nan_to_num(np.diag(1 / s)))
         VT = ss.csr_matrix(np.nan_to_num(vt))
 
-        temp_matrix = spmatrixmul(UT.transpose(), SI)
-        pinv_matrix = spmatrixmul(temp_matrix, VT)
+        temp_matrix = (UT.transpose() * SI)
+        pinv_matrix = (temp_matrix * VT)
         del u, s, vt, UT, SI, VT, temp_matrix
-
-
-
     return pinv_matrix.tocsr()
-
-
 
 
 def cfor(first, test, update):
@@ -335,62 +324,31 @@ class RemoveCol(object):
         del rows, data, i, j
         return self.lilmatrix
 
-def splicematrix(matrix_a, matrix_b, matrix_c, value): 
+
+def splicematrix(matrix_a, matrix_b, matrix_c, value):
 
     ''' the matrix_a should be the WT or it should contain all the rows with
     maximum row elements for maximum profit :P
     '''
     retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
 
-    return sk.normalize(matrix_a.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1), sk.normalize(matrix_b.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1), sk.normalize(matrix_c.tocsc()[:,retain_array].tocsr(), norm='l1', axis=1)
+    return (sk.normalize(matrix_a.tocsc()[:, retain_array].tocsr(),norm='l1', axis=1),
+            sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
+            sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1))
 
 
 def sparsify(m, value=100):
 
     matrix = m.tolil()
     rows, columns = matrix.shape
-    sparseindex = matrix.mean(axis=1) * (value/float(100))
+    sparseindex = matrix.mean(axis=1) * (value / float(100))
     for r in range(rows):
         z = np.where(matrix.tocsr()[r].todense() < sparseindex[r])[1]
         for c in range(z.shape[1]):
-            var = int(z[0,c])
-            matrix[r, var] =  0
+            var = int(z[0, c])
+            matrix[r, var] = 0
 
     return matrix.tocsr()
-
-
- 
-
-
-def old_splicematrix(matrix_a, matrix_b, matrix_c, value):
-
-    A = matrix_a.tolil()
-    B = matrix_b.tolil()
-    C = matrix_c.tolil()
-    listx = A.sum(axis=0).argsort().tolist()[0]
-    
-    remcol_a = RemoveCol(A.tolil())
-    remcol_b = RemoveCol(B.tolil())
-    remcol_c = RemoveCol(C.tolil())
-    j = 0
-
-    while j < len(list_sum_a) and j < len(list_sum_b) and j < len(list_sum_c):
-        col_sum_a = list_sum_a[j]
-        col_sum_b = list_sum_b[j]
-        col_sum_c = list_sum_c[j]
-
-        if col_sum_a <= splice_value and col_sum_b <= splice_value and col_sum_c <= splice_value:
-            remcol_a.removecol(j)
-            remcol_b.removecol(j)
-            remcol_c.removecol(j)
-            list_sum_a.remove(col_sum_a)
-            list_sum_b.remove(col_sum_b)
-            list_sum_c.remove(col_sum_c)
-
-        else:
-            j += 1
-
-    return A, B, C
 
 
 class Represent(object):
@@ -401,7 +359,7 @@ class Represent(object):
 
         self.source = source
         self.target = target
-        
+
         if 'total_prefsuffs' in kwargs:
             self.total_prefsuffs = kwargs['total_prefsuffs']
         else:
@@ -464,8 +422,6 @@ class Represent(object):
             x += 1
 
         W = sk.normalize(M.tocsr(), norm='l1', axis=1)
-
-
         del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
 
         return W.tocsr()
@@ -522,8 +478,6 @@ class Represent(object):
             x += 1
 
         W = sk.normalize(M.tocsr(), norm='l1', axis=1)
-
-
         del hashpref, scorepref, reversehash, bi_freq, bi_tokens, M, content
 
         return W.tocsr()
@@ -547,13 +501,10 @@ class Represent(object):
                         pref_suff = tri_token[0] + "," + tri_token[2]
                         tri_tok = pref_suff + ':1:' + tri_token[1]
                         tri_freq[tri_tok] += 1
-                        
-
         fileinput.close()
         return tri_freq
 
-    def oldremovex(self,tri_freq):
-
+    def oldremovex(self, tri_freq):
         revhash = defaultdict(list)
 
         for i in list(tri_freq.elements()):
@@ -569,10 +520,10 @@ class Represent(object):
         temp_val = 0
 
         if removable != len(revhash.keys()):
-            
+
             while temp_val < removable:
                 popped = sorted_reversehash.pop()
-                rem = popped[0]+':1:*'
+                rem = popped[0] + ':1:*'
                 poplist = filter(lambda name: re.match(rem, name),
                         tri_freq.iterkeys())
                 for pop_element in poplist:
@@ -603,7 +554,7 @@ class Represent(object):
         x = 0
 
         revkeylist = reversehash.keys()
-        
+
         for fword in content:
             flist = hashpref[fword]
             for i in flist:
@@ -613,9 +564,6 @@ class Represent(object):
                 M[x, y] = value
 
             x += 1
-
-
-
         return M.tocsr()
 
     def __del__(self):
@@ -659,9 +607,9 @@ class Similarity(object):
                 y += 1
 
             x += 1
-        
+
         return truth_mat
-                
+
 #
 #        del truth_mat, content_a, content_b
 #        return D
@@ -686,7 +634,6 @@ class Similarity(object):
 
             x += 1
 
-
         return truth_mat
 
     def wup(self):
@@ -708,7 +655,6 @@ class Similarity(object):
                 y += 1
             x += 1
         return truth_mat
-
 
     def jcn(self):
         semcor_ic = wordnet_ic.ic('ic-semcor.dat')
@@ -739,7 +685,7 @@ class Similarity(object):
         content_b = [word.strip() for word in open(self.wordset_b)]
 
         truth_mat = np.zeros(shape=(len(content_a), len(content_b)))
-       
+
         x = 0
         for i in content_a:
             y = 0
@@ -753,7 +699,6 @@ class Similarity(object):
                 y += 1
 
             x += 1
-
 
         return truth_mat
 
@@ -776,7 +721,6 @@ class Compute(object):
 
         if 'step' in kwargs:
             self.step = kwargs['step']
-
         if 'main_matrix' in kwargs:
             self.main_matrix = kwargs['main_matrix']
         if 'test_matrix' in kwargs:
@@ -828,7 +772,7 @@ class Compute(object):
 
     def matcal(self, type):
 
-        global main_mat_inv 
+        global main_mat_inv
         global transpose_matrix_inv
 
         if type is 'regular':
@@ -862,7 +806,7 @@ class Compute(object):
 
                     main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = fast_pseudoinverse(self.transpose_matrix, self.precision)
-        
+
 
             else:
 
@@ -870,16 +814,16 @@ class Compute(object):
                 transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
 
            # step-by-step multiplication
-            temp_matrix = spmatrixmul(self.truth_matrix, transpose_matrix_inv)
-            print 'got the transpose_matrix_inv' 
+            temp_matrix = self.truth_matrix * transpose_matrix_inv
+            print 'got the transpose_matrix_inv'
 
-            projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
-            print 'got the main_mat_inv' 
+            projection_matrix = main_mat_inv * temp_matrix
+            print 'got the main_mat_inv'
 
             del temp_matrix
 
-            temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
-            result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+            temp_matrix = self.main_matrix * projection_matrix
+            result = temp_matrix * self.transpose_matrix.tocsr()
             del temp_matrix
 
             difference = (result - self.truth_matrix)
@@ -889,7 +833,7 @@ class Compute(object):
 
         elif type is 'basic':
 
-            result = spmatrixmul(self.main_matrix, self.transpose_matrix.tocsr())
+            result = self.main_matrix * self.transpose_matrix.tocsr()
 
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
@@ -897,13 +841,14 @@ class Compute(object):
 
         elif type is 'testing':
 
-            temp_matrix = spmatrixmul(self.main_matrix, self.projection_matrix)
-            result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+            temp_matrix = (self.main_matrix * self.projection_matrix)
+            result = (temp_matrix * self.transpose_matrix.tocsr())
             del temp_matrix
 
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
             return result, fresult
+
         elif type is 'identity':
 
             if self.svd is 'scipy':
@@ -935,14 +880,11 @@ class Compute(object):
 
                     main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = fast_pseudoinverse(self.transpose_matrix, self.precision)
-        
 
             else:
 
                 main_mat_inv = np_pseudoinverse(self.main_matrix)
                 transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
-
-
 
             o = np.ones(self.truth_matrix.shape[0])
             print o
@@ -951,19 +893,18 @@ class Compute(object):
             identity_matrix.setdiag(o)
             print identity_matrix
 
-           
-            temp_matrix = spmatrixmul(identity_matrix.tocsr(), transpose_matrix_inv)
-            print 'got the transpose_matrix_inv' 
-            
+            temp_matrix = (identity_matrix.tocsr() * transpose_matrix_inv)
+            print 'got the transpose_matrix_inv'
+
             print temp_matrix
 
-            projection_matrix = spmatrixmul(main_mat_inv, temp_matrix)
-            print 'got the main_mat_inv' 
+            projection_matrix = (main_mat_inv * temp_matrix)
+            print 'got the main_mat_inv'
 
             del temp_matrix
 
-            temp_matrix = spmatrixmul(self.main_matrix, projection_matrix)
-            result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+            temp_matrix = (self.main_matrix * projection_matrix)
+            result = (temp_matrix * self.transpose_matrix.tocsr())
             del temp_matrix
 
             difference = (result - self.truth_matrix)
@@ -977,7 +918,6 @@ class Compute(object):
         result_list = []
         rank = U.shape[0]
 
-        #for k in cfor(1, lambda j: j <= rank, lambda j: j + 25):
         k = 1
         while k <= rank:
 
@@ -988,83 +928,10 @@ class Compute(object):
             matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
 
-            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
-            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
-            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
-            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
-            del temp_matrix, temp_matrix_a, temp_matrix_b
-
-            result_list.append(matrix_result)
-            difference = (matrix_result - self.truth_matrix)
-            fresult = self.fnorm(difference)
-            svd_dict[k] = fresult
-            print 'k = ', k, 'fresult = ', fresult
-            del matrix_result, fresult, difference
-
-            if k == 1:
-                k += (self.step -1)
-            else:
-                k += self.step
-
-        return svd_dict, result_list
-
-    def matrixsvd(self):
-        svd_matrix = self.projection_matrix.tocsc()
-        svd_dict = {}
-        result_list = []
-
-        if self.svd is 'scipy':
-            Utemp, Stemp, VTtemp = ssl.svds(svd_matrix.tocsc(),
-                    k=(int (self.projection_matrix.tocsr().shape[0] *
-                        self.precision)/100))
-
-            U = np.nan_to_num(Utemp.transpose())
-            S = np.nan_to_num(Stemp)
-            VT = np.nan_to_num(VTtemp)
-
-        elif self.svd is 'sparsesvd':
-            (U, S, VT) = sparsesvd(svd_matrix, (int (svd_matrix.shape[0] * self.precision)/100))
-
-        elif self.svd is 'fast':
-
-            Utemp, Stemp, VTtemp = fast_svd(svd_matrix,
-                    (int (self.projection_matrix.tocsr().shape[0] *
-                        self.precision)/100))
-
-            U = np.nan_to_num(Utemp.transpose())
-            S = np.nan_to_num(Stemp)
-            VT = np.nan_to_num(VTtemp)
-
-        else: 
-
-            Utemp, Stemp, VTtemp = np.linalg.svd(svd_matrix.todense())
-
-            U = np.nan_to_num(Utemp.transpose())
-            S = np.nan_to_num(Stemp)
-            VT = np.nan_to_num(VTtemp)
-
-
-
-        
-
-
-        rank = U.shape[0]
-
-        #for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
-        k = 1
-        while k <= rank:
-
-            ut = U[:k]
-            s = S[:k]
-            vt = VT[:k]
-            matrix_u = ss.csr_matrix(ut.T)
-            matrix_s = ss.csr_matrix(np.diag(s))
-            matrix_vt = ss.csr_matrix(vt)
-
-            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
-            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
-            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
-            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
+            temp_matrix = (self.main_matrix * matrix_u)
+            temp_matrix_a = (matrix_s * matrix_vt)
+            temp_matrix_b = (temp_matrix_a * self.transpose_matrix.tocsr())
+            matrix_result = (temp_matrix * temp_matrix_b)
             del temp_matrix, temp_matrix_a, temp_matrix_b
 
             result_list.append(matrix_result)
@@ -1079,19 +946,49 @@ class Compute(object):
             else:
                 k += self.step
 
-        return svd_dict, result_list, U, S, VT
-    
-    def dimred(self, U, S, VT):
+        return svd_dict, result_list
+
+    def matrixsvd(self):
+        svd_matrix = self.projection_matrix.tocsc()
+
+        if self.svd is 'scipy':
+            Utemp, Stemp, VTtemp = ssl.svds(svd_matrix.tocsc(),
+                    k=(int(self.projection_matrix.tocsr().shape[0] *
+                        self.precision) / 100))
+            UT = np.nan_to_num(Utemp.transpose())
+            S = np.nan_to_num(Stemp)
+            VT = np.nan_to_num(VTtemp)
+
+        elif self.svd is 'sparsesvd':
+            (UT, S, VT) = sparsesvd(svd_matrix, (int(svd_matrix.shape[0] * self.precision) / 100))
+
+        elif self.svd is 'fast':
+            Utemp, Stemp, VTtemp = fast_svd(svd_matrix,
+                    (int(self.projection_matrix.tocsr().shape[0] *
+                        self.precision) / 100))
+            UT = np.nan_to_num(Utemp.transpose())
+            S = np.nan_to_num(Stemp)
+            VT = np.nan_to_num(VTtemp)
+
+        else:
+            Utemp, Stemp, VTtemp = np.linalg.svd(svd_matrix.todense())
+            UT = np.nan_to_num(Utemp.transpose())
+            S = np.nan_to_num(Stemp)
+            VT = np.nan_to_num(VTtemp)
+
+        return UT, S, VT
+
+    def dimred(self, UT, S, VT):
 
         result_list = []
 
-        rank = U.shape[0]
+        rank = UT.shape[0]
         print 'rank', rank
-        #for k in cfor(1, lambda i: i <= rank, lambda i: i + 25):
+
         k = 1
         while k <= rank:
 
-            ut = U[:k]
+            ut = UT[:k]
             s = S[:k]
             vt = VT[:k]
             matrix_u = ss.csr_matrix(ut.T)
@@ -1113,12 +1010,11 @@ class Compute(object):
             del matrix_result
 
             if k == 1:
-                k += (self.step - 1) 
+                k += (self.step - 1)
             else:
                 k += self.step
 
-        return result_list, U, S, VT
-
+        return result_list, UT, S, VT
 
     def matrixpca(self):
 
@@ -1126,12 +1022,15 @@ class Compute(object):
             svd_dict = {}
             result_list = []
 
-            mean = self.transpose_matrix.mean(axis = 1)
-            cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
+            mean_matrix = np.repeat(self.transpose_matrix.mean(axis = 1),
+                    self.transpose_matrix.shape[1], 1)
+            precov = ((self.transpose_matrix.todense() - mean_matrix) /
+                    np.sqrt(self.transpose_matrix.shape[1] - 1))
+            cov = (precov * precov.transpose())
 
-            u, s, vt = np.linalg.svd(cov) 
-            
-            print 'transpose matrix shape',self.transpose_matrix.shape
+            u, s, vt = np.linalg.svd(cov)
+
+            print 'transpose matrix shape', self.transpose_matrix.shape
             U = u.transpose()
             print U.shape
 
@@ -1144,7 +1043,7 @@ class Compute(object):
                 temp_matrix = matrix_ut * self.transpose_matrix
                 candidates = (matrix_u * temp_matrix)
                 print candidates.shape
-                
+
                 matrix_result = self.main_matrix * candidates
                 print matrix_result.shape
                 result_list.append(matrix_result)
@@ -1154,48 +1053,52 @@ class Compute(object):
                 print 'k = ', k, 'fresult = ', fresult
                 del matrix_result, fresult, difference
 
-                if k == 1: 
+                if k == 1:
                     k += (self.step - 1)
                 else:
                     k += self.step
-                
 
             return svd_dict, result_list
 
         elif self.pca is 'all':
 
+            svd_dict = {}
             result_list = []
-            cov = self.transpose_matrix.todense() * self.transpose_matrix.todense().transpose()
+            mean_matrix = np.repeat(self.transpose_matrix.mean(axis = 1),
+                    self.transpose_matrix.shape[1], 1)
+            precov = ((self.transpose_matrix.todense() - mean_matrix))
+            cov = ((precov * precov.transpose()) / (self.transpose_matrix.shape[1] - 1))
 
-            u, s, vt = np.linalg.svd(cov) 
-            
-            print 'transpose matrix shape',self.transpose_matrix.shape
+            u, s, vt = np.linalg.svd(cov)
+
+            print 'transpose matrix shape', self.transpose_matrix.shape
             U = u.transpose()
-            print 'here'
-            print U.shape
 
-            k  =1
+            k = 1
             while k <= U.shape[0]:
-
+                print 'hi there, k = ', k
                 ut = U[:k]
                 matrix_u = ss.csr_matrix(ut.T)
                 matrix_ut = ss.csr_matrix(ut)
 
-                temp_a = self.main_matrix * matrix_u
-                temp_b = matrix_ut * self.transpose_matrix
+                temp_a = (self.main_matrix * matrix_u)
+                temp_b = (matrix_ut * self.transpose_matrix) + ss.csr_matrix(mean_matrix)
 
-                matrix_result  = temp_a * temp_b
+                matrix_result = temp_a * temp_b
                 print matrix_result.shape
                 result_list.append(matrix_result)
+                difference = (matrix_result - self.truth_matrix)
+                fresult = self.fnorm(difference)
+                svd_dict[k] = fresult
+                print 'k = ', k, 'fresult = ', fresult
+                del matrix_result, fresult, difference
 
-                if k == 1: 
-                    k += (self.step -1)
+                if k == 1:
+                    k += (self.step - 1)
                 else:
                     k += self.step
- 
-            return result_list
 
-
+            return svd_dict, result_list
 
     def wsvd(self):
 
@@ -1226,17 +1129,17 @@ class Compute(object):
                 SIT = ss.csr_matrix(np.diag(1 / st))
                 VTT = ss.csr_matrix(vtt)
 
-                temp_matrix_a = spmatrixmul(VT.transpose(), SI)
-                temp_matrix_b = spmatrixmul(temp_matrix_a, UT)
-                temp_matrix_c = spmatrixmul(temp_matrix_b, self.truth_matrix)
-                temp_matrix_d = spmatrixmul(VTT.transpose(), SIT)
-                temp_matrix_e = spmatrixmul(temp_matrix_d, UTT)
+                temp_matrix_a = (VT.transpose() * SI)
+                temp_matrix_b = (temp_matrix_a * UT)
+                temp_matrix_c = (temp_matrix_b * self.truth_matrix)
+                temp_matrix_d = (VTT.transpose() * SIT)
+                temp_matrix_e = (temp_matrix_d * UTT)
 
-                projection_func = spmatrixmul(temp_matrix_c, temp_matrix_e)
+                projection_func = (temp_matrix_c * temp_matrix_e)
                 del temp_matrix_a, temp_matrix_b, temp_matrix_c, temp_matrix_d, temp_matrix_e
 
-                temp_matrix = spmatrixmul(self.main_matrix, projection_func)
-                matrix_result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+                temp_matrix = (self.main_matrix * projection_func)
+                matrix_result = (temp_matrix * self.transpose_matrix.tocsr())
                 del temp_matrix
 
                 result_list.append(matrix_result)
@@ -1266,17 +1169,17 @@ class Compute(object):
                 SI = ss.csr_matrix(np.diag(1 / s))
                 VT = ss.csr_matrix(vt)
 
-                temp_matrix_a = spmatrixmul(VT.transpose(), SI)
-                temp_matrix_b = spmatrixmul(temp_matrix_a, UT)
-                temp_matrix_c = spmatrixmul(temp_matrix_b, self.truth_matrix)
-                temp_matrix_d = spmatrixmul(UT.transpose(), SI)
-                temp_matrix_e = spmatrixmul(temp_matrix_d, VT)
+                temp_matrix_a = (VT.transpose() * SI)
+                temp_matrix_b = (temp_matrix_a * UT)
+                temp_matrix_c = (temp_matrix_b * self.truth_matrix)
+                temp_matrix_d = (UT.transpose() * SI)
+                temp_matrix_e = (temp_matrix_d * VT)
 
-                projection_func = spmatrixmul(temp_matrix_c, temp_matrix_e)
+                projection_func = (temp_matrix_c * temp_matrix_e)
                 del temp_matrix_a, temp_matrix_b, temp_matrix_c, temp_matrix_d, temp_matrix_e
 
-                temp_matrix = spmatrixmul(self.main_matrix, projection_func)
-                matrix_result = spmatrixmul(temp_matrix, self.transpose_matrix.tocsr())
+                temp_matrix = (self.main_matrix * projection_func)
+                matrix_result = (temp_matrix *  self.transpose_matrix.tocsr())
                 del temp_matrix
 
                 result_list.append(matrix_result)
@@ -1286,7 +1189,7 @@ class Compute(object):
                 del matrix_result, difference, fresult, ut, s, UT, SI, VT, projection_func
 
                 if k == 1:
-                    k += self.step -1
+                    k += self.step - 1
                 else:
                     k += self.step
 
