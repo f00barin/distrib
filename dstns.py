@@ -996,16 +996,11 @@ class Compute(object):
             matrix_vt = ss.csr_matrix(vt)
 
             temp_matrix = self.main_matrix * matrix_u
-            print 'got temp mat'
             temp_matrix_a = matrix_s * matrix_vt
-            print 'got temp mat a'
             temp_matrix_b = temp_matrix_a * self.transpose_matrix.tocsr()
-            print 'got temp mat b'
             matrix_result = temp_matrix * temp_matrix_b
-            print 'got main matrix'
-
             del temp_matrix, temp_matrix_a, temp_matrix_b
-
+            
             result_list.append(matrix_result)
             del matrix_result
 
@@ -1014,7 +1009,7 @@ class Compute(object):
             else:
                 k += self.step
 
-        return result_list, UT, S, VT
+        return result_list
 
     def matrixpca(self):
 
@@ -1197,8 +1192,24 @@ class Compute(object):
                     key=lambda t: np.float64(t[1])))
 
         return result, result_list
-
+    
     def ranking(self):
+        result_array = np.array(self.result_matrix.todense().argsort(axis=1)[::, ::-1])
+        truth_array = np.array(self.truth_matrix.todense().argsort(axis=1)[::, ::-1][:, :10])
+        ranks = []
+        (m, n) = truth_array.shape
+
+        for i in range(m):
+            rank = 0
+            temp = list(result_array[i])
+            for j in range(n):
+                rank += temp.index(truth_array[i,j])
+            ranks.append(rank / float(10))
+
+        return ((np.sum(ranks))/ float(m))
+
+
+    def oldranking(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
         content_b = [word.strip() for word in open(self.wordset_b)]
 
