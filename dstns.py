@@ -891,12 +891,9 @@ class Compute(object):
 
             identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
             identity_matrix.setdiag(o)
-            print identity_matrix
 
             temp_matrix = (identity_matrix.tocsr() * transpose_matrix_inv)
             print 'got the transpose_matrix_inv'
-
-            print temp_matrix
 
             projection_matrix = (main_mat_inv * temp_matrix)
             print 'got the main_mat_inv'
@@ -909,6 +906,7 @@ class Compute(object):
 
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
+            print 'the fnorm value is ', fresult
 
             return projection_matrix, result, fresult
 
