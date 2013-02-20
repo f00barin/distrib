@@ -1025,16 +1025,18 @@ class Compute(object):
 
             print 'transpose matrix shape', self.transpose_matrix.shape
             U = u.transpose()
-            print U.shape
+            V = vt.transpose()
+            print V.shape
 
 #            for k in cfor(1, lambda i: i <= U.shape[1], lambda i: i+25):
             k = 1
-            while k <= U.shape[0]:
-                ut = U[:k]
-                matrix_u = ss.csr_matrix(ut.T)
-                matrix_ut = ss.csr_matrix(ut)
-                temp_matrix = matrix_ut * self.transpose_matrix
-                candidates = (matrix_u * temp_matrix)
+            while k <= V.shape[0]:
+                v = V[:, :k]
+                matrix_v = ss.csr_matrix(v)
+                matrix_vt = ss.csr_matrix(v.transpose())
+                temp_matrix = matrix_vt * self.transpose_matrix
+                print temp_matrix.shape
+                candidates = (matrix_v * temp_matrix) + ss.csr_matrix(mean_matrix)
                 print candidates.shape
 
                 matrix_result = self.main_matrix * candidates
@@ -1057,25 +1059,31 @@ class Compute(object):
 
             svd_dict = {}
             result_list = []
+
+
             mean_matrix = np.repeat(self.transpose_matrix.mean(axis = 1),
                     self.transpose_matrix.shape[1], 1)
-            precov = ((self.transpose_matrix.todense() - mean_matrix))
-            cov = ((precov * precov.transpose()) / (self.transpose_matrix.shape[1] - 1))
+            precov = ((self.transpose_matrix.todense() - mean_matrix) /
+                    np.sqrt(self.transpose_matrix.shape[1] - 1))
+            cov = (precov * precov.transpose())
 
             u, s, vt = np.linalg.svd(cov)
 
             print 'transpose matrix shape', self.transpose_matrix.shape
             U = u.transpose()
+            V = vt.transpose()
+            print V.shape
+
 
             k = 1
             while k <= U.shape[0]:
                 print 'hi there, k = ', k
-                ut = U[:k]
-                matrix_u = ss.csr_matrix(ut.T)
-                matrix_ut = ss.csr_matrix(ut)
-
-                temp_a = (self.main_matrix * matrix_u)
-                temp_b = (matrix_ut * self.transpose_matrix) + ss.csr_matrix(mean_matrix)
+                v = V[:, :k]
+                matrix_v = ss.csr_matrix(v)
+                matrix_vt = ss.csr_matrix(v.transpose())
+ 
+                temp_a = (self.main_matrix * matrix_v)
+                temp_b = (matrix_vt * self.transpose_matrix)
 
                 matrix_result = temp_a * temp_b
                 print matrix_result.shape
