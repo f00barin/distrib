@@ -1049,6 +1049,7 @@ class Compute(object):
         elif self.pca is 'all':
 
             result_list = []
+
             mean_matrix = np.repeat(self.transpose_matrix.mean(axis = 1),
                     self.transpose_matrix.shape[1], 1)
             precov = ((self.transpose_matrix.todense() - mean_matrix) /
@@ -1060,7 +1061,7 @@ class Compute(object):
             V = vt.transpose()
 
             k = 1
-            while k <= U.shape[0]:
+            while k <= V.shape[0]:
                 v = V[:, :k]
                 matrix_v = ss.csr_matrix(v)
                 matrix_vt = ss.csr_matrix(v.transpose())
