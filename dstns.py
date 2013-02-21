@@ -1012,7 +1012,6 @@ class Compute(object):
     def matrixpca(self):
 
         if self.pca is 'candidate':
-            svd_dict = {}
             result_list = []
 
             mean_matrix = np.repeat(self.transpose_matrix.mean(axis = 1),
@@ -1035,32 +1034,21 @@ class Compute(object):
                 matrix_v = ss.csr_matrix(v)
                 matrix_vt = ss.csr_matrix(v.transpose())
                 temp_matrix = matrix_vt * self.transpose_matrix
-                print temp_matrix.shape
                 candidates = (matrix_v * temp_matrix) + ss.csr_matrix(mean_matrix)
-                print candidates.shape
 
                 matrix_result = self.main_matrix * candidates
-                print matrix_result.shape
                 result_list.append(matrix_result)
-                difference = (matrix_result - self.truth_matrix)
-                fresult = self.fnorm(difference)
-                svd_dict[k] = fresult
-                print 'k = ', k, 'fresult = ', fresult
-                del matrix_result, fresult, difference
 
                 if k == 1:
                     k += (self.step - 1)
                 else:
                     k += self.step
 
-            return svd_dict, result_list
+            return result_list
 
         elif self.pca is 'all':
 
-            svd_dict = {}
             result_list = []
-
-
             mean_matrix = np.repeat(self.transpose_matrix.mean(axis = 1),
                     self.transpose_matrix.shape[1], 1)
             precov = ((self.transpose_matrix.todense() - mean_matrix) /
@@ -1069,15 +1057,10 @@ class Compute(object):
 
             u, s, vt = np.linalg.svd(cov)
 
-            print 'transpose matrix shape', self.transpose_matrix.shape
-            U = u.transpose()
             V = vt.transpose()
-            print V.shape
-
 
             k = 1
             while k <= U.shape[0]:
-                print 'hi there, k = ', k
                 v = V[:, :k]
                 matrix_v = ss.csr_matrix(v)
                 matrix_vt = ss.csr_matrix(v.transpose())
@@ -1086,20 +1069,15 @@ class Compute(object):
                 temp_b = (matrix_vt * self.transpose_matrix)
 
                 matrix_result = temp_a * temp_b
-                print matrix_result.shape
+
                 result_list.append(matrix_result)
-                difference = (matrix_result - self.truth_matrix)
-                fresult = self.fnorm(difference)
-                svd_dict[k] = fresult
-                print 'k = ', k, 'fresult = ', fresult
-                del matrix_result, fresult, difference
 
                 if k == 1:
                     k += (self.step - 1)
                 else:
                     k += self.step
 
-            return svd_dict, result_list
+            return result_list
 
     def wsvd(self):
 
