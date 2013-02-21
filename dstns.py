@@ -834,10 +834,7 @@ class Compute(object):
         elif type is 'basic':
 
             result = self.main_matrix * self.transpose_matrix.tocsr()
-
-            difference = (result - self.truth_matrix)
-            fresult = self.fnorm(difference)
-            return result, fresult
+            return result
 
         elif type is 'testing':
 
