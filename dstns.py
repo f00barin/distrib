@@ -1033,8 +1033,13 @@ class Compute(object):
             print V.shape
 
 #            for k in cfor(1, lambda i: i <= U.shape[1], lambda i: i+25):
+            if self.maxrank:
+                rank = self.maxrank
+            else:
+                rank = V.shape[0]
+
             k = 1
-            while k <= V.shape[0]:
+            while k <= rank:
                 v = V[:, :k]
                 matrix_v = ss.csr_matrix(v)
                 matrix_vt = ss.csr_matrix(v.transpose())
@@ -1065,8 +1070,13 @@ class Compute(object):
 
             V = vt.transpose()
 
+            if self.maxrank:
+                rank = self.maxrank
+            else:
+                rank = V.shape[0]
+
             k = 1
-            while k <= V.shape[0]:
+            while k <= rank:
                 v = V[:, :k]
                 matrix_v = ss.csr_matrix(v)
                 matrix_vt = ss.csr_matrix(v.transpose())
