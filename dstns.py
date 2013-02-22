@@ -763,6 +763,11 @@ class Compute(object):
         else:
             self.svd = None
 
+        if 'maxrank' in kwargs:
+            self.maxrank = kwargs['maxrank']
+        else:
+            self.maxrank = 0
+
     def fnorm(self, matrix, sparse='no'):
         if sparse is 'no':
             return np.linalg.norm(matrix.todense(), 'fro')
@@ -834,7 +839,7 @@ class Compute(object):
         elif type is 'basic':
 
             result = self.main_matrix * self.transpose_matrix.tocsr()
-            return result
+            return result.tocsr()
 
         elif type is 'testing':
 
@@ -976,8 +981,11 @@ class Compute(object):
     def dimred(self, UT, S, VT):
 
         result_list = []
+        if self.maxrank:
+            rank = self.maxrank
+        else:
+            rank = UT.shape[0]
 
-        rank = UT.shape[0]
         print 'rank', rank
 
         k = 1
