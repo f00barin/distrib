@@ -1193,7 +1193,7 @@ class Compute(object):
 
         return result, result_list
     
-    def ranking(self):
+    def test_ranking(self):
         result_array = np.array(self.result_matrix.todense().argsort(axis=1)[::, ::-1])
         truth_array = np.array(self.truth_matrix.todense().argsort(axis=1)[::, ::-1][:, :10])
         ranks = []
@@ -1208,6 +1208,32 @@ class Compute(object):
 
         return ((np.sum(ranks))/ float(m))
 
+    def train_ranking(self):
+        result_array = np.array(self.result_matrix.todense().argsort(axis=1)[::, ::-1])
+        truth_array = np.array(self.truth_matrix.todense().argsort(axis=1)[::, ::-1][:, :11])
+        ranks = []
+        (m, n) = truth_array.shape
+
+        for i in range(m):
+
+            rank = 0
+            truth_row = truth_array[i]
+
+            try:
+                rem = np.where(truth_row == i)[0][0]
+                temp_arr = np.delete(truth_row, rem, axis=0)
+                truth_row = temp_arr
+            except:
+                temp_arr = truth_row[:10]
+                truth_row = temp_arr
+
+            temp = list(result_array[i])
+
+            for j in range(n-1):
+                rank += temp.index(truth_row[j])
+            ranks.append(rank / float(10))
+
+        return ((np.sum(ranks))/ float(m))
 
     def oldranking(self):
         content_a = [word.strip() for word in open(self.wordset_a)]
