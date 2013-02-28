@@ -325,16 +325,16 @@ class RemoveCol(object):
         return self.lilmatrix
 
 
-def splicematrix(matrix_a, matrix_b, matrix_c, value):
+def splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
 
     ''' the matrix_a should be the WT or it should contain all the rows with
     maximum row elements for maximum profit :P
     '''
     retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
 
-    return (sk.normalize(matrix_a.tocsc()[:, retain_array].tocsr(),norm='l1', axis=1),
-            sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
-            sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1))
+    return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(),norm='l1', axis=1),
+            sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
+            sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1))
 
 
 def sparsify(m, value=100):
@@ -721,8 +721,10 @@ class Compute(object):
 
         if 'step' in kwargs:
             self.step = kwargs['step']
+
         if 'main_matrix' in kwargs:
             self.main_matrix = kwargs['main_matrix']
+
         if 'test_matrix' in kwargs:
             self.test_matrix = kwargs['test_matrix']
 
@@ -746,14 +748,6 @@ class Compute(object):
 
         if 'projection_matrix' in kwargs:
             self.projection_matrix = kwargs['projection_matrix']
-
-        if 'wordset_a' in kwargs:
-            self.wordset_a = kwargs['wordset_a']
-
-        if 'wordset_b' in kwargs:
-            self.wordset_b = kwargs['wordset_b']
-        else:
-            self.wordset_b = self.wordset_a
 
         if 'result_matrix' in kwargs:
             self.result_matrix = kwargs['result_matrix']
@@ -784,47 +778,29 @@ class Compute(object):
 
             if self.svd is 'scipy':
 
-                if self.are_equal is 'set':
-
-                    main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
-
-                else:
-
                     main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = sci_pseudoinverse(self.transpose_matrix, self.precision)
-            elif self.svd is 'sparsesvd':
-                print 'here'
 
-                if self.are_equal is 'set':
-                    main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
-                else:
+            elif self.svd is 'sparsesvd':
+
                     main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = pseudoinverse(self.transpose_matrix, self.precision)
 
             elif self.svd is 'fast':
 
-                if self.are_equal is 'set':
-
-                    main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
-
-                else:
-
                     main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = fast_pseudoinverse(self.transpose_matrix, self.precision)
-
 
             else:
 
                 main_mat_inv = np_pseudoinverse(self.main_matrix)
                 transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
 
-           # step-by-step multiplication
             temp_matrix = self.truth_matrix * transpose_matrix_inv
             print 'got the transpose_matrix_inv'
 
             projection_matrix = main_mat_inv * temp_matrix
             print 'got the main_mat_inv'
-
             del temp_matrix
 
             temp_matrix = self.main_matrix * projection_matrix
@@ -833,7 +809,7 @@ class Compute(object):
 
             difference = (result - self.truth_matrix)
             fresult = self.fnorm(difference)
-
+            
             return projection_matrix, result, fresult
 
         elif type is 'basic':
@@ -855,30 +831,14 @@ class Compute(object):
 
             if self.svd is 'scipy':
 
-                if self.are_equal is 'set':
-
-                    main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
-
-                else:
-
                     main_mat_inv = sci_pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = sci_pseudoinverse(self.transpose_matrix, self.precision)
             elif self.svd is 'sparsesvd':
-                print 'here'
 
-                if self.are_equal is 'set':
-                    main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
-                else:
                     main_mat_inv = pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = pseudoinverse(self.transpose_matrix, self.precision)
 
             elif self.svd is 'fast':
-
-                if self.are_equal is 'set':
-
-                    main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
-
-                else:
 
                     main_mat_inv = fast_pseudoinverse(self.main_matrix, self.precision)
                     transpose_matrix_inv = fast_pseudoinverse(self.transpose_matrix, self.precision)
@@ -889,7 +849,6 @@ class Compute(object):
                 transpose_matrix_inv = np_pseudoinverse(self.transpose_matrix)
 
             o = np.ones(self.truth_matrix.shape[0])
-            print o
 
             identity_matrix = ss.lil_matrix(self.truth_matrix.shape)
             identity_matrix.setdiag(o)
@@ -1234,63 +1193,63 @@ class Compute(object):
             ranks.append(rank / float(10))
 
         return ((np.sum(ranks))/ float(m))
-
-    def oldranking(self):
-        content_a = [word.strip() for word in open(self.wordset_a)]
-        content_b = [word.strip() for word in open(self.wordset_b)]
-
-        result_matrix = self.result_matrix.todense()
-        truth_matrix = self.truth_matrix.todense()
-        row = 0
-        targets = []
-        rankings = []
-        result_word_list = []
-        truth_word_list = []
-
-        for i in content_a:
-            targets.append(i)
-            column = 0
-            result_dict = {}
-            truth_dict = {}
-
-            for j in content_b:
-
-                result_dict[str(j)] = result_matrix[row, column]
-                truth_dict[str(j)] = truth_matrix[row, column]
-                column += 1
-
-            result_sort = OrderedDict(reversed(sorted(result_dict.items(),
-                key=lambda t: np.float(t[1])))).keys()
-
-            truth_sort = OrderedDict(reversed(sorted(truth_dict.items(),
-                key=lambda t: np.float(t[1])))).keys()
-
-            result_words = []
-            truth_words = []
-            iteration = 0
-            rank = 0
-            rank_count = 0
-            tr_rank = 0
-
-            for l in range(0, 10):
-
-                result_words.append(result_sort[l])
-                truth_words.append(truth_sort[l])
-                rank_count += (result_sort.index(truth_sort[l]) + 1)
-                iteration += 1
-                tr_rank += iteration
-
-            rank = float(rank_count / 10.0)
-            reference = float(tr_rank / 10.0)
-            result_word_list.append(result_words)
-            truth_word_list.append(truth_words)
-            rankings.append(rank)
-
-            row += 1
-
-        avg_rank = (float(sum(rankings) / len(rankings)))
-
-        return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
+#
+#    def oldranking(self):
+#        content_a = [word.strip() for word in open(self.wordset_a)]
+#        content_b = [word.strip() for word in open(self.wordset_b)]
+#
+#        result_matrix = self.result_matrix.todense()
+#        truth_matrix = self.truth_matrix.todense()
+#        row = 0
+#        targets = []
+#        rankings = []
+#        result_word_list = []
+#        truth_word_list = []
+#
+#        for i in content_a:
+#            targets.append(i)
+#            column = 0
+#            result_dict = {}
+#            truth_dict = {}
+#
+#            for j in content_b:
+#
+#                result_dict[str(j)] = result_matrix[row, column]
+#                truth_dict[str(j)] = truth_matrix[row, column]
+#                column += 1
+#
+#            result_sort = OrderedDict(reversed(sorted(result_dict.items(),
+#                key=lambda t: np.float(t[1])))).keys()
+#
+#            truth_sort = OrderedDict(reversed(sorted(truth_dict.items(),
+#                key=lambda t: np.float(t[1])))).keys()
+#
+#            result_words = []
+#            truth_words = []
+#            iteration = 0
+#            rank = 0
+#            rank_count = 0
+#            tr_rank = 0
+#
+#            for l in range(0, 10):
+#
+#                result_words.append(result_sort[l])
+#                truth_words.append(truth_sort[l])
+#                rank_count += (result_sort.index(truth_sort[l]) + 1)
+#                iteration += 1
+#                tr_rank += iteration
+#
+#            rank = float(rank_count / 10.0)
+#            reference = float(tr_rank / 10.0)
+#            result_word_list.append(result_words)
+#            truth_word_list.append(truth_words)
+#            rankings.append(rank)
+#
+#            row += 1
+#
+#        avg_rank = (float(sum(rankings) / len(rankings)))
+#
+#        return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
 
     def __del__(self):
         self.free()
