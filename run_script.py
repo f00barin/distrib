@@ -72,7 +72,7 @@ for i in range(10):
 if args.notsub:
 
     trainarr = total[:args.numtrain]
-    candarr = total[args.ntr:(args.ntr+args.numcandidates)]
+    candarr = total[args.numtrain:(args.numtrain+args.numcandidates)]
     testarr = total[(args.numtrain+args.numcandidates):(args.numtrain+args.numcandidates+args.numtest)]
     
 else:
