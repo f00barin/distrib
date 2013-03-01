@@ -16,6 +16,7 @@ parser.add_argument("-nps", "--numprefsuff", type=int, help="number of prefix-su
 parser.add_argument("--trinner", help="compute average rank for training set inner product and display", action="store_true")
 parser.add_argument("--teinner", help="compute average rank for testing set inner product and display", action="store_true")
 parser.add_argument("--svd", help="compute svd matrix and save it", action="store_true")
+parser.add_argument("--loadvals", help="if the list of values used as train, candidates, test are in a file then this loads it", action="store_true")
 parser.add_argument("--travg", help="save the list of average ranks for a normal training set with dimensionality reduction", action="store_true")
 parser.add_argument("--teavg", help="save the list of avergage ranks for a normal testing set with dimensionality reduction", action="store_true")
 parser.add_argument("--trpca", help="save the list of average ranks for a normal training set with PCA and dimensionality reduction", action="store_true")
