@@ -65,9 +65,29 @@ f.close()
 Truth = ss.csr_matrix((data,indices,indptr), shape=shape)
 ######################################################################
 
-total = range(Representation.shape[0])
-for i in range(10):
-    np.random.shuffle(total)
+if args.loadvals:
+
+    f = h5py.File('values-used.hdf5', 'r')
+    
+    dataset = f['values']
+    total = np.empty(dataset.shape, dataset.dtype)
+    dataset.read_direct(total)
+    
+    f.close()
+
+else:
+
+    total = range(Representation.shape[0])
+    
+    for i in range(10):
+        np.random.shuffle(total)
+
+    f = h5py.File('values-used.hdf5', 'w')
+    
+    f.create_dataset('values', data=total)
+    
+    f.close()
+
 
 if args.notsub:
 
