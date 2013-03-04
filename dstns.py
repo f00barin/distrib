@@ -327,8 +327,8 @@ class RemoveCol(object):
 
 def splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
 
-    ''' the matrix_a should be the WT or it should contain all the rows with
-    maximum row elements for maximum profit :P
+    ''' 
+    the matrix_a should be the whole representation or it should contain all the rows
     '''
     retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
 
