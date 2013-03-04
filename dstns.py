@@ -332,7 +332,7 @@ def splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
     '''
     retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
 
-    return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(),norm='l1', axis=1),
+    return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
             sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
             sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1))
 
