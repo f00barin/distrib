@@ -22,6 +22,10 @@ parser.add_argument("--teavg", help="save the list of avergage ranks for a norma
 parser.add_argument("--trpca", help="save the list of average ranks for a normal training set with PCA and dimensionality reduction", action="store_true")
 parser.add_argument("--tepca", help="save the list of average ranks for a normal testing set with PCA and dimensionality reduction", action="store_true")
 parser.add_argument("--loadsvd", help="load svd matrices from disk", action="store_true")
+parser.add_argument("--trhatsvd", help="baseline - matrix_hat svd from lsa for the training matrix", action="store_true")
+parser.add_argument("--tehatsvd", help="baseline - matrix_hat svd from lsa for the testing matrix", action="store_true")
+parser.add_argument("--trhatavg", help="baseline - matrix_hat avg ranks training", action="store_true")
+parser.add_argument("--tehatavg", help="baseline - matrix_hat avg ranks testing", action="store_true")
 parser.add_argument("--step", type=int, help="the iteration step for k")
 args = parser.parse_args()
 
@@ -259,5 +263,93 @@ if args.tepca:
 
     f = h5py.File('testing-pca.hdf5', 'w')
     f.create_dataset('svd_list_avg_ranks', data=tepca_list)
+    f.close()
+
+if args.trhatsvd:
+    Chatrsvd = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+            truth_matrix=truthtrain)
+    UTtrhat, Strhat, VTtrhat = Chatrsvd.matrixhat()
+
+    f = h5py.File('trhat-svd-dataset.hdf5', 'w')
+    f.create_dataset('singular_UT', data=UTtrhat)
+    f.create_dataset('singular_S', data=Strhat)
+    f.create_dataset('singular_VT', data=VTtrhat)
+    f.close()
+
+if args.tehatsvd:
+    Chatesvd = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
+            truth_matrix=truthtest)
+    UTtehat, Stehat, VTtehat = Chatesvd.matrixhat()
+
+    f = h5py.File('tehat-svd-dataset.hdf5', 'w')
+    f.create_dataset('singular_UT', data=UTtehat)
+    f.create_dataset('singular_S', data=Stehat)
+    f.create_dataset('singular_VT', data=VTtehat)
+    f.close()
+
+if args.trhatavg:
+    trhatavg_list = []
+    if args.loadsvd:
+        f = h5py.File('trhat-svd-dataset.hdf5', 'r')
+        dataset = f['singular_UT']
+        UTtrhat = np.empty(dataset.shape, dataset.dtype)
+        dataset.read_direct(UTtrhat)
+        dataset = f['singular_S']
+        Strhat = np.empty(dataset.shape, dataset.dtype)
+        dataset.read_direct(Strhat)
+        dataset = f['singular_VT']
+        VTtrhat = np.empty(dataset.shape, dataset.dtype)
+        dataset.read_direct(VTtrhat)
+        f.close()
+
+    Ctrhatdimred = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+            truth_matrix=truthtrain, step=args.step)
+    trhatdimred_result_list = Ctrhatdimred.dimredhat(UTtrhat, Strhat, VTtrhat)
+
+    for i in trhatdimred_result_list:
+        Ctrhatavg = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+                truth_matrix=truthtrain, result_matrix=i)
+        if args.notsub:
+            trhatavg = Ctrhatavg.test_ranking()
+            trhatavg_list.append(trhatavg)
+        else:
+            trhatavg = Ctrhatavg.train_ranking()
+            trhatavg_list.append(trhatavg)
+
+    f = h5py.File('trhataining-dataset.hdf5', 'w')
+    f.create_dataset('svd_list_avg_ranks', data=trhatavg_list)
+    f.close()
+
+if args.tehatavg:
+    tehatavg_list = []
+    if args.loadsvd:
+        f = h5py.File('tehat-svd-dataset.hdf5', 'r')
+        dataset = f['singular_UT']
+        UTtehat = np.empty(dataset.shape, dataset.dtype)
+        dataset.read_direct(UTtehat)
+        dataset = f['singular_S']
+        Stehat = np.empty(dataset.shape, dataset.dtype)
+        dataset.read_direct(Stehat)
+        dataset = f['singular_VT']
+        VTtehat = np.empty(dataset.shape, dataset.dtype)
+        dataset.read_direct(VTtehat)
+        f.close()
+
+    Ctehatdimred = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+            truth_matrix=truthtrain, step=args.step)
+    tehatdimred_result_list = Ctehatdimred.dimredhat(UTtehat, Stehat, VTtehat)
+
+    for i in tehatdimred_result_list:
+        Ctehatavg = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+                truth_matrix=truthtrain, result_matrix=i)
+        if args.notsub:
+            tehatavg = Ctehatavg.test_ranking()
+            tehatavg_list.append(tehatavg)
+        else:
+            tehatavg = Ctehatavg.train_ranking()
+            tehatavg_list.append(tehatavg)
+
+    f = h5py.File('tehataining-dataset.hdf5', 'w')
+    f.create_dataset('svd_list_avg_ranks', data=tehatavg_list)
     f.close()
 

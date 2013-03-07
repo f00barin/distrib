@@ -817,16 +817,6 @@ class Compute(object):
             result = self.main_matrix * self.transpose_matrix.tocsr()
             return result.tocsr()
 
-        elif type is 'testing':
-
-            temp_matrix = (self.main_matrix * self.projection_matrix)
-            result = (temp_matrix * self.transpose_matrix.tocsr())
-            del temp_matrix
-
-            difference = (result - self.truth_matrix)
-            fresult = self.fnorm(difference)
-            return result, fresult
-
         elif type is 'identity':
 
             if self.svd is 'scipy':
@@ -936,6 +926,52 @@ class Compute(object):
             VT = np.nan_to_num(VTtemp)
 
         return UT, S, VT
+    
+    def matrixhat(self):
+
+        hatmatrix = self.main_matrix * self.transpose_matrix.tocsr()
+
+        Utemp, Stemp, VTtemp = np.linalg.svd(hatmatrix.todense())
+        UT = np.nan_to_num(Utemp.transpose())
+        S = np.nan_to_num(Stemp)
+        VT = np.nan_to_num(VTtemp)
+
+        return UT, S, VT
+
+    def dimredhat(self, UT, S, VT):
+
+        result_list = []
+        if self.maxrank:
+            rank = self.maxrank
+        else:
+            rank = UT.shape[0]
+
+        print 'rank', rank
+
+        k = 1
+        while k <= rank:
+
+            ut = UT[:k]
+            s = S[:k]
+            vt = VT[:k]
+            matrix_u = ss.csr_matrix(ut.T)
+            matrix_s = ss.csr_matrix(np.diag(s))
+            matrix_vt = ss.csr_matrix(vt)
+
+            temp_matrix = matrix_u * matrix_s
+            matrix_result = temp_matrix * matrix_vt
+            del temp_matrix
+            
+            result_list.append(matrix_result)
+            del matrix_result
+
+            if k == 1:
+                k += (self.step - 1)
+            else:
+                k += self.step
+
+        return result_list
+
 
     def dimred(self, UT, S, VT):
 
