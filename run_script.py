@@ -335,19 +335,16 @@ if args.tehatavg:
         dataset.read_direct(VTtehat)
         f.close()
 
-    Ctehatdimred = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
-            truth_matrix=truthtrain, step=args.step)
+    Ctehatdimred = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
+            truth_matrix=truthtest, step=args.step)
     tehatdimred_result_list = Ctehatdimred.dimredhat(UTtehat, Stehat, VTtehat)
 
     for i in tehatdimred_result_list:
-        Ctehatavg = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
-                truth_matrix=truthtrain, result_matrix=i)
-        if args.notsub:
-            tehatavg = Ctehatavg.test_ranking()
-            tehatavg_list.append(tehatavg)
-        else:
-            tehatavg = Ctehatavg.train_ranking()
-            tehatavg_list.append(tehatavg)
+        Ctehatavg = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
+                truth_matrix=truthtest, result_matrix=i)
+
+        tehatavg = Ctehatavg.train_ranking()
+        tehatavg_list.append(tehatavg)
 
     f = h5py.File('tehataining-dataset.hdf5', 'w')
     f.create_dataset('svd_list_avg_ranks', data=tehatavg_list)
