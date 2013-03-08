@@ -325,18 +325,60 @@ class RemoveCol(object):
         return self.lilmatrix
 
 
-def splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
+def l1_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
 
     ''' 
     the matrix_a should be the whole representation or it should contain all the rows
     '''
     retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
 
-    return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
-            sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
+    return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1), 
+            sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1), 
             sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1))
 
+def l2_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
 
+    ''' 
+    the matrix_a should be the whole representation or it should contain all the rows
+    '''
+    retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
+
+    return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1),
+            sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1),
+            sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1))
+
+
+
+
+
+
+def ppmi(matrix):
+
+    all_sum = np.float64(matrix.sum())
+    pij_matrix = (matrix.todense() / all_sum)
+    pi_star = (matrix.sum(axis=0) / all_sum)
+    pj_star = (matrix.sum(axis=1) / all_sum)
+    pmi_temp = pij_matrix / pi_star
+    pmi_matrix = np.log(pmi_temp / pj_star)
+    condition = pmi_matrix < 0 
+    pmi_matrix[condition] = 0
+    return pmi_matrix
+
+
+def ppmi_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
+
+    ''' 
+    the matrix_a should be the whole representation or it should contain all the rows
+    '''
+    retain_array = np.array(matrix_a.tocsc().sum(axis=0).tolist()[0]).argsort()[::-1][:value]
+
+    temp_matrix_b = matrix_b.tocsc()[:, retain_array].tocsr()
+    temp_matrix_c = matrix_c.tocsc()[:, retain_array].tocsr()
+    temp_matrix_d = matrix_d.tocsc()[:, retain_array].tocsr()
+
+    return ss.csr_matrix(ppmi(temp_matrix_b)), ss.csr_matrix(ppmi(temp_matrix_c)), ss.csr_matrix(ppmi(temp_matrix_d))
+
+            
 def sparsify(m, value=100):
 
     matrix = m.tolil()

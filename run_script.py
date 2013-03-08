@@ -13,6 +13,7 @@ parser.add_argument("-nsub", "--notsub", help="training is not a subset of all t
 parser.add_argument("-ncan", "--numcandidates", type=int, help="number of candidates for similarity score", required=True)
 parser.add_argument("-nte", "--numtest", type=int, help="number of testing candidates", required=True)
 parser.add_argument("-nps", "--numprefsuff", type=int, help="number of prefix-suffix pairs", required=True)
+parser.add_argument("--smoothing", type=int, help="smoothing of matrix type, 1 = 'l1', 2 = 'ppmi' and 3 = 'l2' supported", required=True)
 parser.add_argument("--loadvals", help="if the list of values used as train, candidates, test are in a file then this loads it", action="store_true")
 parser.add_argument("--trinner", help="compute average rank for training set inner product and display", action="store_true")
 parser.add_argument("--teinner", help="compute average rank for testing set inner product and display", action="store_true")
@@ -111,8 +112,15 @@ trainmat = Representation[trainarr]
 candimat = Representation[candarr]
 testmat = Representation[testarr]
 
-trainmat, candimat, testmat = dstns.splicematrix(Representation, trainmat,
+if args.smoothing == 1:
+    trainmat, candimat, testmat = dstns.l1_splicematrix(Representation, trainmat,
         candimat, testmat, args.numprefsuff)
+elif args.smoothing == 2:
+    trainmat, candimat, testmat = dstns.ppmi_splicematrix(Representation, trainmat, candimat, testmat, args.numprefsuff)
+elif args.smoothing == 3:
+    trainmat, candimat, testmat = dstns.l2_splicematrix(Representation, trainmat,
+        candimat, testmat, args.numprefsuff)
+
 
 truthtemp = Truth[trainarr]
 truthtrain = truthtemp[:, candarr]
