@@ -351,7 +351,7 @@ if args.tehatavg:
         Ctehatavg = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
                 truth_matrix=truthtest, result_matrix=i)
 
-        tehatavg = Ctehatavg.train_ranking()
+        tehatavg = Ctehatavg.test_ranking()
         tehatavg_list.append(tehatavg)
 
     f = h5py.File('tehataining-dataset.hdf5', 'w')
