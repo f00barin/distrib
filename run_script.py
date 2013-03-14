@@ -8,8 +8,8 @@ import argparse
 import scipy.sparse as ss 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-ntr", "--numtrain", type=int, help="number of training candidates", required=True)
-parser.add_argument("-nsub", "--notsub", help="training is not a subset of all the similarity candidates", action="store_true")
+parser.add_argument("-ntr", "--numtrain", type=int, help='''number of training candidates''', required=True)
+parser.add_argument("-nsub", "--notsub", help='''training is not a subset of all the similarity candidates''', action="store_true")
 parser.add_argument("-ncan", "--numcandidates", type=int, help="number of candidates for similarity score", required=True)
 parser.add_argument("-nte", "--numtest", type=int, help="number of testing candidates", required=True)
 parser.add_argument("-nps", "--numprefsuff", type=int, help="number of prefix-suffix pairs", required=True)
@@ -23,8 +23,6 @@ parser.add_argument("--teavg", help="save the list of avergage ranks for a norma
 parser.add_argument("--trpca", help="save the list of average ranks for a normal training set with PCA and dimensionality reduction", action="store_true")
 parser.add_argument("--tepca", help="save the list of average ranks for a normal testing set with PCA and dimensionality reduction", action="store_true")
 parser.add_argument("--loadsvd", help="load svd matrices from disk", action="store_true")
-parser.add_argument("--trhatsvd", help="baseline - matrix_hat svd from lsa for the training matrix", action="store_true")
-parser.add_argument("--tehatsvd", help="baseline - matrix_hat svd from lsa for the testing matrix", action="store_true")
 parser.add_argument("--trhatavg", help="baseline - matrix_hat avg ranks training", action="store_true")
 parser.add_argument("--tehatavg", help="baseline - matrix_hat avg ranks testing", action="store_true")
 parser.add_argument("--step", type=int, help="the iteration step for k")
@@ -111,23 +109,27 @@ else:
 trainmat = Representation[trainarr]
 candimat = Representation[candarr]
 testmat = Representation[testarr]
+hatmat = Representation[total]
 
 if args.smoothing == 1:
-    trainmat, candimat, testmat = dstns.l1_splicematrix(Representation, trainmat,
-        candimat, testmat, args.numprefsuff)
+    trainmat, candimat, testmat, hatmat = dstns.l1_splicematrix(Representation, trainmat,
+        candimat, testmat, hatmat, args.numprefsuff)
 elif args.smoothing == 2:
-    trainmat, candimat, testmat = dstns.ppmi_splicematrix(Representation, trainmat, candimat, testmat, args.numprefsuff)
+    trainmat, candimat, testmat, hatmat = dstns.ppmi_splicematrix(Representation,
+            trainmat, candimat, testmat, hatmat, args.numprefsuff)
 elif args.smoothing == 3:
-    trainmat, candimat, testmat = dstns.l2_splicematrix(Representation, trainmat,
-        candimat, testmat, args.numprefsuff)
+    trainmat, candimat, testmat, hatmat = dstns.l2_splicematrix(Representation, trainmat,
+        candimat, testmat, hatmat, args.numprefsuff)
 
 
 truthtemp = Truth[trainarr]
 truthtrain = truthtemp[:, candarr]
+truthtrhat = truthtemp[:, total]
 del truthtemp
 
 truthtemp = Truth[testarr]
 truthtest = truthtemp[:, candarr]
+truthtehat = truthtemp[:, total]
 del truthtemp
 
 if args.trinner:
@@ -235,21 +237,17 @@ if args.teavg:
 
 if args.trpca:
     trpca_list = []
-    Ctrpca = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
-            truth_matrix=truthtrain, step=args.step, p='all')
+    Ctrpca = dstns.Compute(main_matrix=trainmat, transpose_matrix=hatmat,
+            truth_matrix=truthtrhat, step=args.step, p='all')
     trpca_result_list = Ctrpca.matrixpca()
 
     for i in trpca_result_list:
         Ctrpcavg = dstns.Compute(main_matrix=trainmat,
-                transpose_matrix=candimat, truth_matrix=truthtrain,
+                transpose_matrix=hatmat, truth_matrix=truthtrhat,
                 result_matrix=i)
 
-        if args.notsub:
-            trpcavg = Ctrpcavg.test_ranking()
-            trpca_list.append(trpcavg)
-        else:
-            trpcavg = Ctrpcavg.train_ranking()
-            trpca_list.append(trpcavg)
+        trpcavg = Ctrpcavg.train_ranking()
+        trpca_list.append(trpcavg)
 
     f = h5py.File('training-pca.hdf5', 'w')
     f.create_dataset('svd_list_avg_ranks', data=trpca_list)
@@ -257,104 +255,55 @@ if args.trpca:
 
 if args.tepca:
     tepca_list = []
-    Ctepca = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
-            truth_matrix=truthtest, step=args.step, p='all')
+    Ctepca = dstns.Compute(main_matrix=testmat, transpose_matrix=hatmat,
+            truth_matrix=truthtehat, step=args.step, p='all')
     tepca_result_list = Ctepca.matrixpca()
 
     for i in tepca_result_list:
         Ctepcavg = dstns.Compute(main_matrix=testmat,
-                transpose_matrix=candimat, truth_matrix=truthtest,
+                transpose_matrix=hatmat, truth_matrix=truthtehat,
                 result_matrix=i)
 
-        tepcavg = Ctepcavg.test_ranking()
+        tepcavg = Ctepcavg.train_ranking()
         tepca_list.append(tepcavg)
 
     f = h5py.File('testing-pca.hdf5', 'w')
     f.create_dataset('svd_list_avg_ranks', data=tepca_list)
     f.close()
 
-if args.trhatsvd:
-    Chatrsvd = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
-            truth_matrix=truthtrain)
-    UTtrhat, Strhat, VTtrhat = Chatrsvd.matrixhat()
-
-    f = h5py.File('trhat-svd-dataset.hdf5', 'w')
-    f.create_dataset('singular_UT', data=UTtrhat)
-    f.create_dataset('singular_S', data=Strhat)
-    f.create_dataset('singular_VT', data=VTtrhat)
-    f.close()
-
-if args.tehatsvd:
-    Chatesvd = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
-            truth_matrix=truthtest)
-    UTtehat, Stehat, VTtehat = Chatesvd.matrixhat()
-
-    f = h5py.File('tehat-svd-dataset.hdf5', 'w')
-    f.create_dataset('singular_UT', data=UTtehat)
-    f.create_dataset('singular_S', data=Stehat)
-    f.create_dataset('singular_VT', data=VTtehat)
-    f.close()
-
 if args.trhatavg:
-    trhatavg_list = []
-    if args.loadsvd:
-        f = h5py.File('trhat-svd-dataset.hdf5', 'r')
-        dataset = f['singular_UT']
-        UTtrhat = np.empty(dataset.shape, dataset.dtype)
-        dataset.read_direct(UTtrhat)
-        dataset = f['singular_S']
-        Strhat = np.empty(dataset.shape, dataset.dtype)
-        dataset.read_direct(Strhat)
-        dataset = f['singular_VT']
-        VTtrhat = np.empty(dataset.shape, dataset.dtype)
-        dataset.read_direct(VTtrhat)
-        f.close()
+    trhat_list = []
+    Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=hatmat,
+            truth_matrix=truthtrhat, step=args.step)
+    trhat_result_list = Ctrhat.matrixhat()
 
-    Ctrhatdimred = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
-            truth_matrix=truthtrain, step=args.step)
-    trhatdimred_result_list = Ctrhatdimred.dimredhat(UTtrhat, Strhat, VTtrhat)
+    for i in trhat_result_list:
+        Ctrhatvg = dstns.Compute(main_matrix=trainmat,
+                transpose_matrix=hatmat, truth_matrix=truthtrhat,
+                result_matrix=i)
 
-    for i in trhatdimred_result_list:
-        Ctrhatavg = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
-                truth_matrix=truthtrain, result_matrix=i)
-        if args.notsub:
-            trhatavg = Ctrhatavg.test_ranking()
-            trhatavg_list.append(trhatavg)
-        else:
-            trhatavg = Ctrhatavg.train_ranking()
-            trhatavg_list.append(trhatavg)
+        trhatvg = Ctrhatvg.train_ranking()
+        trhat_list.append(trhatvg)
 
-    f = h5py.File('trhataining-dataset.hdf5', 'w')
-    f.create_dataset('svd_list_avg_ranks', data=trhatavg_list)
+    f = h5py.File('training-hat.hdf5', 'w')
+    f.create_dataset('svd_list_avg_ranks', data=trhat_list)
     f.close()
 
-if args.tehatavg:
-    tehatavg_list = []
-    if args.loadsvd:
-        f = h5py.File('tehat-svd-dataset.hdf5', 'r')
-        dataset = f['singular_UT']
-        UTtehat = np.empty(dataset.shape, dataset.dtype)
-        dataset.read_direct(UTtehat)
-        dataset = f['singular_S']
-        Stehat = np.empty(dataset.shape, dataset.dtype)
-        dataset.read_direct(Stehat)
-        dataset = f['singular_VT']
-        VTtehat = np.empty(dataset.shape, dataset.dtype)
-        dataset.read_direct(VTtehat)
-        f.close()
+if args.tepca:
+    tehat_list = []
+    Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=hatmat,
+            truth_matrix=truthtehat, step=args.step, p='all')
+    tehat_result_list = Ctehat.matrixhat()
 
-    Ctehatdimred = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
-            truth_matrix=truthtest, step=args.step)
-    tehatdimred_result_list = Ctehatdimred.dimredhat(UTtehat, Stehat, VTtehat)
+    for i in tehat_result_list:
+        Ctehatvg = dstns.Compute(main_matrix=testmat,
+                transpose_matrix=hatmat, truth_matrix=truthtehat,
+                result_matrix=i)
 
-    for i in tehatdimred_result_list:
-        Ctehatavg = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
-                truth_matrix=truthtest, result_matrix=i)
+        tehatvg = Ctehatvg.train_ranking()
+        tehat_list.append(tehatvg)
 
-        tehatavg = Ctehatavg.test_ranking()
-        tehatavg_list.append(tehatavg)
-
-    f = h5py.File('tehataining-dataset.hdf5', 'w')
-    f.create_dataset('svd_list_avg_ranks', data=tehatavg_list)
+    f = h5py.File('testing-hat.hdf5', 'w')
+    f.create_dataset('svd_list_avg_ranks', data=tehat_list)
     f.close()
 

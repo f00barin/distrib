@@ -243,7 +243,6 @@ def psp_pseudoinverse(Mat, precision):
     return pinv_matrix.tocsr()
 
 
-
 def sci_pseudoinverse(Mat, precision):
     """
     Pseudoinverse computation.
@@ -325,7 +324,7 @@ class RemoveCol(object):
         return self.lilmatrix
 
 
-def l1_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
+def l1_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, matrix_e, value):
 
     ''' 
     the matrix_a should be the whole representation or it should contain all the rows
@@ -334,9 +333,11 @@ def l1_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
 
     return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1), 
             sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1), 
-            sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1))
+            sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1),
+            sk.normalize(matrix_e.tocsc()[:, retain_array].tocsr(), norm='l1', axis=1))
 
-def l2_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
+
+def l2_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, matrix_e, value):
 
     ''' 
     the matrix_a should be the whole representation or it should contain all the rows
@@ -345,11 +346,8 @@ def l2_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
 
     return (sk.normalize(matrix_b.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1),
             sk.normalize(matrix_c.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1),
-            sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1))
-
-
-
-
+            sk.normalize(matrix_d.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1),
+            sk.normalize(matrix_e.tocsc()[:, retain_array].tocsr(), norm='l2', axis=1))
 
 
 def ppmi(matrix):
@@ -365,7 +363,7 @@ def ppmi(matrix):
     return pmi_matrix
 
 
-def ppmi_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
+def ppmi_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, matrix_e, value):
 
     ''' 
     the matrix_a should be the whole representation or it should contain all the rows
@@ -375,8 +373,10 @@ def ppmi_splicematrix(matrix_a, matrix_b, matrix_c, matrix_d, value):
     temp_matrix_b = matrix_b.tocsc()[:, retain_array].tocsr()
     temp_matrix_c = matrix_c.tocsc()[:, retain_array].tocsr()
     temp_matrix_d = matrix_d.tocsc()[:, retain_array].tocsr()
+    temp_matrix_e = matrix_e.tocsc()[:, retain_array].tocsr()
 
-    return ss.csr_matrix(ppmi(temp_matrix_b)), ss.csr_matrix(ppmi(temp_matrix_c)), ss.csr_matrix(ppmi(temp_matrix_d))
+    return ss.csr_matrix(ppmi(temp_matrix_b)), ss.csr_matrix(ppmi(temp_matrix_c)), ss.csr_matrix(ppmi(temp_matrix_d)), ss.csr_matrix(ppmi(temp_matrix_e))
+
 
             
 def sparsify(m, value=100):
@@ -969,51 +969,6 @@ class Compute(object):
 
         return UT, S, VT
     
-    def matrixhat(self):
-
-        hatmatrix = self.main_matrix * self.transpose_matrix.tocsr()
-
-        Utemp, Stemp, VTtemp = np.linalg.svd(hatmatrix.todense())
-        UT = np.nan_to_num(Utemp.transpose())
-        S = np.nan_to_num(Stemp)
-        VT = np.nan_to_num(VTtemp)
-
-        return UT, S, VT
-
-    def dimredhat(self, UT, S, VT):
-
-        result_list = []
-        if self.maxrank:
-            rank = self.maxrank
-        else:
-            rank = UT.shape[0]
-
-        print 'rank', rank
-
-        k = 1
-        while k <= rank:
-
-            ut = UT[:k]
-            s = S[:k]
-            vt = VT[:k]
-            matrix_u = ss.csr_matrix(ut.T)
-            matrix_s = ss.csr_matrix(np.diag(s))
-            matrix_vt = ss.csr_matrix(vt)
-
-            temp_matrix = matrix_u * matrix_s
-            matrix_result = temp_matrix * matrix_vt
-            del temp_matrix
-            
-            result_list.append(matrix_result)
-            del matrix_result
-
-            if k == 1:
-                k += (self.step - 1)
-            else:
-                k += self.step
-
-        return result_list
-
 
     def dimred(self, UT, S, VT):
 
@@ -1328,6 +1283,42 @@ class Compute(object):
 #        avg_rank = (float(sum(rankings) / len(rankings)))
 #
 #        return reference, avg_rank, rankings, result_word_list, truth_word_list, targets
+
+    def matrixhat(self):
+
+        result_list = []
+
+        covhat = (self.transpose_matrix * self.transpose_matrix.transpose())
+
+        u, s, vt = np.linalg.svd(covhat.todense())
+
+        V = vt.transpose()
+
+        if self.maxrank:
+            rank = self.maxrank
+        else:
+            rank = V.shape[0]
+
+        k = 1
+        while k <= rank:
+            v = V[:, :k]
+            matrix_v = ss.csr_matrix(v)
+            matrix_vt = ss.csr_matrix(v.transpose())
+
+            temp_a = (self.main_matrix * matrix_v)
+            temp_b = (matrix_vt * self.transpose_matrix)
+
+            matrix_result = temp_a * temp_b
+
+            result_list.append(matrix_result)
+
+            if k == 1:
+                k += (self.step - 1)
+            else:
+                k += self.step
+
+        return result_list
+
 
     def __del__(self):
         self.free()
