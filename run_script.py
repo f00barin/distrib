@@ -26,6 +26,7 @@ parser.add_argument("--loadsvd", help="load svd matrices from disk", action="sto
 parser.add_argument("--trhatavg", help="baseline - matrix_hat avg ranks training", action="store_true")
 parser.add_argument("--tehatavg", help="baseline - matrix_hat avg ranks testing", action="store_true")
 parser.add_argument("--step", type=int, help="the iteration step for k")
+parser.add_argument("--sparsemul", help="multiply using pysparse matrix - good for big matrices", action="store_true")
 args = parser.parse_args()
 
 ##########################################################################
@@ -187,10 +188,15 @@ if args.travg:
         VT = np.empty(dataset.shape, dataset.dtype)
         dataset.read_direct(VT)
         f.close()
+    if args.sparsemul:
+        Ctrdimred = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+                truth_matrix=truthtrain, step=args.step)
+        trdimred_result_list = Ctrdimred.spdimred(UT, S, VT)
+    else:
+        Ctrdimred = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+                truth_matrix=truthtrain, step=args.step)
+        trdimred_result_list = Ctrdimred.dimred(UT, S, VT)
 
-    Ctrdimred = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
-            truth_matrix=truthtrain, step=args.step)
-    trdimred_result_list = Ctrdimred.dimred(UT, S, VT)
 
     for i in trdimred_result_list:
         Ctravg = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
@@ -221,9 +227,15 @@ if args.teavg:
         dataset.read_direct(VT)
         f.close()
 
-    Ctedimred = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
-            truth_matrix=truthtest, step=args.step)
-    tedimred_result_list = Ctedimred.dimred(UT, S, VT)
+    if args.sparsemul:
+        Ctedimred = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
+                truth_matrix=truthtest, step=args.step)
+        tedimred_result_list = Ctedimred.spdimred(UT, S, VT)
+    else:
+        Ctedimred = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
+                truth_matrix=truthtest, step=args.step)
+        tedimred_result_list = Ctedimred.dimred(UT, S, VT)
+
 
     for i in tedimred_result_list:
         Cteavg = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
@@ -273,9 +285,18 @@ if args.tepca:
 
 if args.trhatavg:
     trhat_list = []
-    Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=hatmat,
-            truth_matrix=truthtrhat, step=args.step)
-    trhat_result_list = Ctrhat.matrixhat()
+
+    if args.sparsemul:
+            
+        Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=hatmat,
+                truth_matrix=truthtrhat, step=args.step)
+        trhat_result_list = Ctrhat.spmatrixhat()
+    else:
+        Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=hatmat,
+                truth_matrix=truthtrhat, step=args.step)
+        trhat_result_list = Ctrhat.matrixhat()
+
+
 
     for i in trhat_result_list:
         Ctrhatvg = dstns.Compute(main_matrix=trainmat,
@@ -291,9 +312,18 @@ if args.trhatavg:
 
 if args.tepca:
     tehat_list = []
-    Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=hatmat,
-            truth_matrix=truthtehat, step=args.step, p='all')
-    tehat_result_list = Ctehat.matrixhat()
+    
+    if args.sparsemul:
+
+        Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=hatmat,
+                truth_matrix=truthtehat, step=args.step, p='all')
+        tehat_result_list = Ctehat.spmatrixhat()
+    else:
+        Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=hatmat,
+                truth_matrix=truthtehat, step=args.step, p='all')
+        tehat_result_list = Ctehat.matrixhat()
+
+
 
     for i in tehat_result_list:
         Ctehatvg = dstns.Compute(main_matrix=testmat,

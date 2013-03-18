@@ -1006,6 +1006,45 @@ class Compute(object):
 
         return result_list
 
+
+    def spdimred(self, UT, S, VT):
+
+        result_list = []
+        if self.maxrank:
+            rank = self.maxrank
+        else:
+            rank = UT.shape[0]
+
+        print 'rank', rank
+
+        k = 1
+        while k <= rank:
+
+            ut = UT[:k]
+            s = S[:k]
+            vt = VT[:k]
+            matrix_u = ss.csr_matrix(ut.T)
+            matrix_s = ss.csr_matrix(np.diag(s))
+            matrix_vt = ss.csr_matrix(vt)
+
+            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
+            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
+            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
+            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
+            del temp_matrix, temp_matrix_a, temp_matrix_b
+            
+            result_list.append(matrix_result)
+            del matrix_result
+
+            if k == 1:
+                k += (self.step - 1)
+            else:
+                k += self.step
+
+        return result_list
+
+
+
     def matrixpca(self):
 
         if self.pca is 'candidate':
@@ -1309,6 +1348,42 @@ class Compute(object):
             temp_b = (matrix_vt * self.transpose_matrix)
 
             matrix_result = temp_a * temp_b
+
+            result_list.append(matrix_result)
+
+            if k == 1:
+                k += (self.step - 1)
+            else:
+                k += self.step
+
+        return result_list
+
+
+    def spmatrixhat(self):
+
+        result_list = []
+
+        covhat = spmatrixmul(self.transpose_matrix, self.transpose_matrix.transpose())
+
+        u, s, vt = np.linalg.svd(covhat.todense())
+
+        V = vt.transpose()
+
+        if self.maxrank:
+            rank = self.maxrank
+        else:
+            rank = V.shape[0]
+
+        k = 1
+        while k <= rank:
+            v = V[:, :k]
+            matrix_v = ss.csr_matrix(v)
+            matrix_vt = ss.csr_matrix(v.transpose())
+
+            temp_a = spmatrixmul(self.main_matrix, matrix_v)
+            temp_b = spmatrixmul(matrix_vt, self.transpose_matrix)
+
+            matrix_result = spmatrixmul(temp_a, temp_b)
 
             result_list.append(matrix_result)
 
