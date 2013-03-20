@@ -990,10 +990,10 @@ class Compute(object):
             matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
 
-            temp_matrix = self.main_matrix * matrix_u
-            temp_matrix_a = matrix_s * matrix_vt
-            temp_matrix_b = temp_matrix_a * self.transpose_matrix.tocsr()
-            matrix_result = temp_matrix * temp_matrix_b
+            temp_matrix = matrix_u * matrix_s
+            temp_matrix_a = temp_matrix * matrix_vt
+            temp_matrix_b = self.main_matrix * temp_matrix_a
+            matrix_result = temp_matrix_b * self.transpose_matrix.tocsr()
             del temp_matrix, temp_matrix_a, temp_matrix_b
             
             result_list.append(matrix_result)
@@ -1027,10 +1027,10 @@ class Compute(object):
             matrix_s = ss.csr_matrix(np.diag(s))
             matrix_vt = ss.csr_matrix(vt)
 
-            temp_matrix = spmatrixmul(self.main_matrix, matrix_u)
-            temp_matrix_a = spmatrixmul(matrix_s, matrix_vt)
-            temp_matrix_b = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
-            matrix_result = spmatrixmul(temp_matrix, temp_matrix_b)
+            temp_matrix = spmatrixmul(matrix_u, matrix_s)
+            temp_matrix_a = spmatrixmul(temp_matrix, matrix_vt)
+            temp_matrix_b = spmatrixmul(self.main_matrix, temp_matrix_a)
+            matrix_result = spmatrixmul(temp_matrix_a, self.transpose_matrix.tocsr())
             del temp_matrix, temp_matrix_a, temp_matrix_b
             
             result_list.append(matrix_result)
