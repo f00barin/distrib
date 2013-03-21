@@ -58,20 +58,14 @@ def cossimilarity(word1, word2):
 
     result = 0
 
+    mod = ((np.array(dict2.values(), dtype=np.float64) ** 
+        2).sum() * (np.array(dict2.values(), dtype=np.float64) ** 2).sum())
+
     for synset in dict1:
         if synset in dict2:
             result += ((np.float64(dict1[synset])) *
             np.float64(dict2[synset]))
     
-    return round((result/(computemod(dict1) * computemod(dict2))), 10)
-
-def computemod(dict):
-    mod = 0
-
-    for synset in dict:
-        weight = dict[synset]
-        mod += (np.float64(weight) * np.float64(weight))
-
-    return np.sqrt(mod)
+    return round((result / mod), 10)
 
 

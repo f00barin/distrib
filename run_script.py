@@ -310,7 +310,7 @@ if args.trhatavg:
     f.create_dataset('svd_list_avg_ranks', data=trhat_list)
     f.close()
 
-if args.tepca:
+if args.tehatavg:
     tehat_list = []
     
     if args.sparsemul:
