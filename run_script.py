@@ -27,6 +27,7 @@ parser.add_argument("--trhatavg", help="baseline - matrix_hat avg ranks training
 parser.add_argument("--tehatavg", help="baseline - matrix_hat avg ranks testing", action="store_true")
 parser.add_argument("--step", type=int, help="the iteration step for k")
 parser.add_argument("--sparsemul", help="multiply using pysparse matrix - good for big matrices", action="store_true")
+parser.add_argument("--truthfl", help="the truth file 1 = ukb-dot, 2=ukb-cos, 3=path", type=int)
 args = parser.parse_args()
 
 ##########################################################################
@@ -52,7 +53,13 @@ Representation = ss.csr_matrix((data,indices,indptr), shape=shape)
 
 #########################################################################
 #########Loading true similarity scores##################################
-f = h5py.File('truth-sparse.hdf5', 'r')
+if args.truthfl == 1:
+    f = h5py.File('truth-sparse.hdf5', 'r')
+elif args.truthfl == 2:
+    f = h5py.File('truth-ukb-cos.hdf5', 'r')
+elif args.truthfl == 3: 
+    f = h5py.File('truth-path.hdf5', 'r')
+
 dataset = f['data']
 data = np.empty(dataset.shape, dataset.dtype)
 dataset.read_direct(data)
