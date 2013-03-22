@@ -53,7 +53,7 @@ def samplespl(matrix, format, words):
 
 default = None
 
-def pprint(source1, source2=default, source3=default):
+def pprint(source1, source2=default, source3=default, source4=default):
     simlist = []
     for key in source1:
         ll = []
@@ -63,10 +63,14 @@ def pprint(source1, source2=default, source3=default):
             ll.append(source2[key])
         if source3 != None:
             ll.append(source3[key])
+        if source4 != None:
+            ll.append(source4[key])
 
         simlist.append(ll)
 
-    if source3 != None and  source2 != None:
+    if source4 != None and source3 != None and  source2 != None:
+        print tabulate(simlist, ["word", "source1", "source2", "source3", "source4"], tablefmt="grid")
+    elif source3 != None and  source2 != None:
         print tabulate(simlist, ["word", "source1", "source2", "source3"], tablefmt="grid")
     elif source2 != None:
         print tabulate(simlist, ["word", "source1", "source2"], tablefmt="grid")
