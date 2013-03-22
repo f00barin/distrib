@@ -215,7 +215,7 @@ if args.travg:
             travg = Ctravg.train_ranking()
             travg_list.append(travg)
 
-    sv = np.where(trdimred_result_list == np.array(trdimred_result_list).min())[0][0]
+    sv = np.where(travg_list == np.array(travg_list).min())[0][0]
     f = h5py.File('training-best.hdf5', 'w')
     f.create_dataset('data', data=trdimred_result_list[sv].data)
     f.create_dataset('indices', data=trdimred_result_list[sv].indices)
@@ -258,7 +258,7 @@ if args.teavg:
         teavg = Cteavg.test_ranking()
         teavg_list.append(teavg)
 
-    sv = np.where(tedimred_result_list == np.array(tedimred_result_list).min())[0][0]
+    sv = np.where(teavg_list == np.array(teavg_list).min())[0][0]
     f = h5py.File('testing-best.hdf5', 'w')
     f.create_dataset('data', data=tedimred_result_list[sv].data)
     f.create_dataset('indices', data=tedimred_result_list[sv].indices)
@@ -331,7 +331,7 @@ if args.trhatavg:
         trhatvg = Ctrhatvg.train_ranking()
         trhat_list.append(trhatvg)
 
-    sv = np.where(trhat_result_list == np.array(trhat_result_list).min())[0][0]
+    sv = np.where(trhat_list == np.array(trhat_list).min())[0][0]
     f = h5py.File('training-hat-best.hdf5', 'w')
     f.create_dataset('data', data=trhat_result_list[sv].data)
     f.create_dataset('indices', data=trhat_result_list[sv].indices)
@@ -366,7 +366,7 @@ if args.tehatavg:
         tehatvg = Ctehatvg.train_ranking()
         tehat_list.append(tehatvg)
 
-    sv = np.where(tehat_result_list == np.array(tehat_result_list).min())[0][0]
+    sv = np.where(tehat_list == np.array(tehat_list).min())[0][0]
     f = h5py.File('testing-hat-best.hdf5', 'w')
     f.create_dataset('data', data=tehat_result_list[sv].data)
     f.create_dataset('indices', data=tehat_result_list[sv].indices)
