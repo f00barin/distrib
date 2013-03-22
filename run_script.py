@@ -313,19 +313,19 @@ if args.trhatavg:
 
     if args.sparsemul:
             
-        Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=hatmat,
-                truth_matrix=truthtrhat, step=args.step)
+        Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+                truth_matrix=truthtrain, step=args.step)
         trhat_result_list = Ctrhat.spmatrixhat()
     else:
-        Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=hatmat,
-                truth_matrix=truthtrhat, step=args.step)
+        Ctrhat = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
+                truth_matrix=truthtrain, step=args.step)
         trhat_result_list = Ctrhat.matrixhat()
 
 
 
     for i in trhat_result_list:
         Ctrhatvg = dstns.Compute(main_matrix=trainmat,
-                transpose_matrix=hatmat, truth_matrix=truthtrhat,
+                transpose_matrix=candimat, truth_matrix=truthtrain,
                 result_matrix=i)
 
         trhatvg = Ctrhatvg.train_ranking()
@@ -348,22 +348,22 @@ if args.tehatavg:
     
     if args.sparsemul:
 
-        Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=hatmat,
-                truth_matrix=truthtehat, step=args.step, p='all')
+        Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
+                truth_matrix=truthtest, step=args.step, p='all')
         tehat_result_list = Ctehat.spmatrixhat()
     else:
-        Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=hatmat,
-                truth_matrix=truthtehat, step=args.step, p='all')
+        Ctehat = dstns.Compute(main_matrix=testmat, transpose_matrix=candimat,
+                truth_matrix=truthtest, step=args.step, p='all')
         tehat_result_list = Ctehat.matrixhat()
 
 
 
     for i in tehat_result_list:
         Ctehatvg = dstns.Compute(main_matrix=testmat,
-                transpose_matrix=hatmat, truth_matrix=truthtehat,
+                transpose_matrix=candimat, truth_matrix=truthtest,
                 result_matrix=i)
 
-        tehatvg = Ctehatvg.train_ranking()
+        tehatvg = Ctehatvg.test_ranking()
         tehat_list.append(tehatvg)
 
     sv = np.where(tehat_list == np.array(tehat_list).min())[0][0]
