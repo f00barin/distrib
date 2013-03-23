@@ -328,8 +328,12 @@ if args.trhatavg:
                 transpose_matrix=candimat, truth_matrix=truthtrain,
                 result_matrix=i)
 
-        trhatvg = Ctrhatvg.train_ranking()
-        trhat_list.append(trhatvg)
+        if args.notsub:
+            trhatvg = Ctrhatvg.test_ranking()
+            trhat_list.append(trhatvg)
+        else:
+            trhatvg = Ctrhatvg.train_ranking()
+            trhat_list.append(trhatvg)
 
     sv = np.where(trhat_list == np.array(trhat_list).min())[0][0]
     f = h5py.File('training-hat-best.hdf5', 'w')
