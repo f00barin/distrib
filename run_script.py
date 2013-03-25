@@ -28,6 +28,7 @@ parser.add_argument("--tehatavg", help="baseline - matrix_hat avg ranks testing"
 parser.add_argument("--step", type=int, help="the iteration step for k")
 parser.add_argument("--sparsemul", help="multiply using pysparse matrix - good for big matrices", action="store_true")
 parser.add_argument("--truthfl", help="the truth file 1 = ukb-dot, 2=ukb-cos, 3=path", type=int)
+parser.add_argument("--dumptruth", help="dump used truth matrices", action="store_true")
 args = parser.parse_args()
 
 ##########################################################################
@@ -139,6 +140,25 @@ truthtemp = Truth[testarr]
 truthtest = truthtemp[:, candarr]
 truthtehat = truthtemp[:, total]
 del truthtemp
+
+if args.dumptruth:
+
+    f = h5py.File('truth-training.hdf5', 'w')
+    f.create_dataset('data', data=truthtrain.data)
+    f.create_dataset('indices', data=truthtrain.indices)
+    f.create_dataset('indptr', data=truthtrain.indptr)
+    f.create_dataset('shape', data=truthtrain.shape)
+    f.close()
+
+    f = h5py.File('truth-testing.hdf5', 'w')
+    f.create_dataset('data', data=truthtest.data)
+    f.create_dataset('indices', data=truthtest.indices)
+    f.create_dataset('indptr', data=truthtest.indptr)
+    f.create_dataset('shape', data=truthtest.shape)
+    f.close()
+
+
+
 
 if args.trinner:
     Ctrinner = dstns.Compute(main_matrix=trainmat, transpose_matrix=candimat,
