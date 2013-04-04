@@ -79,9 +79,7 @@ Truth = ss.csr_matrix((data,indices,indptr), shape=shape)
 ######################################################################
 
 if args.loadvals:
-
     f = h5py.File('values-used.hdf5', 'r')
-    
     dataset = f['values']
     total = np.empty(dataset.shape, dataset.dtype)
     dataset.read_direct(total)

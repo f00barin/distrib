@@ -8,8 +8,11 @@ from tabulate import tabulate
 wordlist = 'all_wordnet.txt'
 content = [word.strip() for word in open(wordlist)]
 
+def printinformat(num, den):
+    return "%s => %s" % (num, den)
 
-def sampledef(matrix, format, words):
+
+def sampledef(matrix, format, words, totvalarray):
     word_dict = {}
     farray = np.array(matrix.todense().argsort(axis=1)[::, ::-1][:,
         :int(words)])
@@ -17,15 +20,17 @@ def sampledef(matrix, format, words):
     
     for row in range(rows):
         simlist = []
+        scorelist = []
         for col in range(cols):
-            simlist.append(content[farray[row, col]])
 
-        word_dict[content[format[row]]] = ', '.join(map(str, simlist))
+            simlist.append(content[totvalarray[farray[row, col]]])
+            scorelist.append(matrix[row, farray[row,col]])
+
+        word_dict[content[format[row]]] = printinformat(*([', '.join(map(str, simlist)), ', '.join(map(str, scorelist))]))
 
     return word_dict
     
-
-def samplespl(matrix, format, words):
+def samplespl(matrix, format, words, totvalarray):
     word_dict = {}
     farray = np.array(matrix.todense().argsort(axis=1)[::, ::-1][:,
         :(int(words)+1)])
@@ -33,6 +38,8 @@ def samplespl(matrix, format, words):
 
     for row in range(rows):
         simlist = []
+        scorelist = []
+
         cands = farray[row]
         try:
             rem = np.where(cands == format[row])[0][0]
@@ -43,9 +50,10 @@ def samplespl(matrix, format, words):
             cands = temp_arr
             
         for col in range(cols-1):
-            simlist.append(content[cands[col]])
+            simlist.append(content[totvalarray[cands[col]]])
+            scorelist.append(matrix[row, cands[col]])
 
-        word_dict[content[format[row]]] = ', '.join(map(str, simlist))
+        word_dict[content[format[row]]] = printinformat(*([', '.join(map(str, simlist)), ', '.join(map(str, scorelist))]))
 
     return word_dict
  

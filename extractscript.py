@@ -26,9 +26,26 @@ def exttruthtest(mfname, vfname):
     dataset = f['values']
     total = np.empty(dataset.shape, dataset.dtype)
     dataset.read_direct(total)
+    f.close()
+
+    trainarr = total[:10000]
+    candarr = total[:25446]
+    testarr = total[25446:]
+
+    ttruth = truth[testarr]
+    return ttruth[:, total], testarr
+
+
+def extractvals(vfname):
+    f = h5py.File(vfname, 'r')
+    dataset = f['values']
+    total = np.empty(dataset.shape, dataset.dtype)
+    dataset.read_direct(total)
     testarr = total[25446:]
     f.close()
-    return truth[testarr], testarr
+    
+    return total, testarr
+
 
 def extractmat(mfname):
 
