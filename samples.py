@@ -9,7 +9,9 @@ wordlist = 'all_wordnet.txt'
 content = [word.strip() for word in open(wordlist)]
 
 def printinformat(num, den):
-    return "%s => %s" % (num, den)
+    scoretionary = dict(zip(num, den))
+    s = '; '.join(['%s = %s' % (key, value) for (key, value) in scoretionary.items()])
+    return s
 
 
 def sampledef(matrix, format, words, totvalarray):
@@ -26,7 +28,9 @@ def sampledef(matrix, format, words, totvalarray):
             simlist.append(content[totvalarray[farray[row, col]]])
             scorelist.append(matrix[row, farray[row,col]])
 
-        word_dict[content[format[row]]] = printinformat(*([', '.join(map(str, simlist)), ', '.join(map(str, scorelist))]))
+#        word_dict[content[format[row]]] = printinformat(*([', '.join(map(str, simlist)), ', '.join(map(str, scorelist))]))
+        word_dict[content[format[row]]] = printinformat(simlist, scorelist)
+
 
     return word_dict
     
@@ -53,7 +57,8 @@ def samplespl(matrix, format, words, totvalarray):
             simlist.append(content[totvalarray[cands[col]]])
             scorelist.append(matrix[row, cands[col]])
 
-        word_dict[content[format[row]]] = printinformat(*([', '.join(map(str, simlist)), ', '.join(map(str, scorelist))]))
+#        word_dict[content[format[row]]] = printinformat(*([', '.join(map(str, simlist)), ', '.join(map(str, scorelist))]))
+        word_dict[content[format[row]]] = printinformat(simlist, scorelist)
 
     return word_dict
  
@@ -77,13 +82,13 @@ def pprint(source1, source2=default, source3=default, source4=default):
         simlist.append(ll)
 
     if source4 != None and source3 != None and  source2 != None:
-        print tabulate(simlist, ["word", "source1", "source2", "source3", "source4"], tablefmt="grid")
+        print tabulate(simlist, ["word", "source1", "source2", "source3", "source4"], tablefmt="orgtbl")
     elif source3 != None and  source2 != None:
-        print tabulate(simlist, ["word", "source1", "source2", "source3"], tablefmt="grid")
+        print tabulate(simlist, ["word", "source1", "source2", "source3"], tablefmt="orgtbl")
     elif source2 != None:
-        print tabulate(simlist, ["word", "source1", "source2"], tablefmt="grid")
+        print tabulate(simlist, ["word", "source1", "source2"], tablefmt="orgtbl")
     else:
-        print tabulate(simlist, ["word", "source1"], tablefmt="grid")
+        print tabulate(simlist, ["word", "source1"], tablefmt="orgtbl")
 
 
 
