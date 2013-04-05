@@ -4,6 +4,7 @@ import numpy as np
 import scipy.sparse as ss
 from tabulate import tabulate 
 import itertools
+import freqsort 
 
 wordlist = 'all_wordnet.txt'
 content = [word.strip() for word in open(wordlist)]
@@ -102,6 +103,8 @@ def pprint(source1, source2=default, source3=default, source4=default):
     if source4 != None:
         print 'nothing found;'
     elif source3 != None:
+        newhash, sortedlist = freqsort.sortfn('bllip_all_ptbtkn.txt', source1)
+        
         max_key, max_val1 = find_max(source1)
         max_key, max_val2 = find_max(source2)
         max_key, max_val3 = find_max(source3)
@@ -115,7 +118,7 @@ def pprint(source1, source2=default, source3=default, source4=default):
         underline = "-+-".join(['-' * x for x in listall])
         print '+-%s-+' % underline
 
-        for key in source1:
+        for key in sortedlist:
             pkey = str(key).ljust(max_key)
             print "| %s |" % pkey
             vals1 = source1[key]
