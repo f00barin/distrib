@@ -6,7 +6,7 @@ import dstns
 import numpy as np
 import argparse
 import scipy.sparse as ss 
-
+import freqvals
 parser = argparse.ArgumentParser()
 parser.add_argument("-ntr", "--numtrain", type=int, help='''number of training candidates''', required=True)
 parser.add_argument("-nsub", "--notsub", help='''training is not a subset of all the similarity candidates''', action="store_true")
@@ -28,6 +28,7 @@ parser.add_argument("--tehatavg", help="baseline - matrix_hat avg ranks testing"
 parser.add_argument("--step", type=int, help="the iteration step for k")
 parser.add_argument("--sparsemul", help="multiply using pysparse matrix - good for big matrices", action="store_true")
 parser.add_argument("--truthfl", help="the truth file 1 = ukb-dot, 2=ukb-cos, 3=path", type=int)
+parser.add_argument("--freqvals", help="get training, candidate and test values that are sorted as per the corpus frequency", action="store_true")
 parser.add_argument("--dumptruth", help="dump used truth matrices", action="store_true")
 args = parser.parse_args()
 
@@ -87,11 +88,13 @@ if args.loadvals:
     f.close()
 
 else:
-
-    total = range(Representation.shape[0])
-    
-    for i in range(10):
-        np.random.shuffle(total)
+    if args.freqvals:
+	content = [word.strip() for word in open('all_wordnet.txt')]
+        total = freqvals.sortedlist('bllip_all_ptbtkn.txt', content)
+    else:
+	total = range(Representation.shape[0])
+	for i in range(10):
+            np.random.shuffle(total)
 
     f = h5py.File('values-used.hdf5', 'w')
     
