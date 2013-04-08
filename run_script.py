@@ -92,9 +92,9 @@ else:
 	content = [word.strip() for word in open('all_wordnet.txt')]
         total = freqvals.sortedlist('bllip_all_ptbtkn.txt', content)
     else:
-	total = range(Representation.shape[0])
-	for i in range(10):
-            np.random.shuffle(total)
+        total = range(Representation.shape[0])
+        for i in range(10):
+                np.random.shuffle(total)
 
     f = h5py.File('values-used.hdf5', 'w')
     

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import re
+import numpy as np
 import fileinput
 from nltk.probability import *
 import nltk
