@@ -6,8 +6,9 @@ import fileinput
 from nltk.probability import *
 import nltk
 
+default=0
 
-def sortedlist(corpus, wordlist):
+def sortedlist(corpus, wordlist, cutoff=default):
     words = nltk.FreqDist()
     for line in fileinput.input([corpus]):
         punctuation = re.compile(r'`\'\\\/[-.?!,":;()|0-9]')
@@ -16,10 +17,11 @@ def sortedlist(corpus, wordlist):
         for token in tokens:
             words.inc(token)
     fileinput.close()
-    newhash = {}
+    hash = {}
     for key in wordlist:
-        newhash[key] = words[key]
-
+        hash[key] = words[key]
+    
+    newhash = { k: v for k, v in hash.iteritems() if v > cutoff }
  
 
     sortedlist = sorted(newhash, key=newhash.get, reverse=True)

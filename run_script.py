@@ -30,6 +30,7 @@ parser.add_argument("--sparsemul", help="multiply using pysparse matrix - good f
 parser.add_argument("--truthfl", help="the truth file 1 = ukb-dot, 2=ukb-cos, 3=path", type=int)
 parser.add_argument("--freqvals", help="get training, candidate and test values that are sorted as per the corpus frequency", action="store_true")
 parser.add_argument("--dumptruth", help="dump used truth matrices", action="store_true")
+parser.add_argument("-freqco", "--freqco", help='''frequency cut off for word in the corpus''', action="store_true")
 args = parser.parse_args()
 
 ##########################################################################
@@ -90,7 +91,7 @@ if args.loadvals:
 else:
     if args.freqvals:
 	content = [word.strip() for word in open('all_wordnet.txt')]
-        total = freqvals.sortedlist('bllip_all_ptbtkn.txt', content)
+        total = freqvals.sortedlist('bllip_all_ptbtkn.txt', content, args.freqco)
     else:
         total = range(Representation.shape[0])
         for i in range(10):
