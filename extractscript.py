@@ -41,7 +41,7 @@ def extractvals(vfname):
     dataset = f['values']
     total = np.empty(dataset.shape, dataset.dtype)
     dataset.read_direct(total)
-    testarr = total[25446:]
+    testarr = total[(len(total)-1000):]
     f.close()
     
     return total, testarr
